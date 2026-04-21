@@ -1,0 +1,40 @@
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Database
+*.db
+*.sqlite3
+
+# Environment variables
+.env
+
+# PyCharm
+.idea/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Alembic
+alembic/versions/*.pyc
+
+# Distribution
+dist/
+build/
+*.egg-info/
