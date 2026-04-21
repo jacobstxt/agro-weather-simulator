@@ -205,10 +205,3 @@ GET /simulate/{simulation_id} → full result from database
 |------|------|--------|
 | Stanislave Savosh | Backend | [@Stanislave19](https://github.com/Stanislave19) |
 
-## Group
-
-FEI-15c — Numerical Methods course project
-
----
-
-*Supervisor: ас. КАСЬКУН О. Д.*
