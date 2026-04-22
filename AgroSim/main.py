@@ -1,5 +1,7 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.responses import RedirectResponse
+
 from api.routes import regions, weather
 from database.db import engine, get_db
 from database import models
@@ -20,7 +22,7 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000","http://localhost:5173"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -35,6 +37,10 @@ async def log_requests(request: Request, call_next):
 
 app.include_router(regions.router, prefix="/api/regions", tags=["regions"])
 app.include_router(weather.router, prefix="/api/weather", tags=["weather"])
+
+@app.get("/", include_in_schema=False)
+def root():
+    return RedirectResponse(url="/docs")
 
 @app.get("/health")
 def health():
