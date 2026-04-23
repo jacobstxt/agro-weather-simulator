@@ -86,12 +86,13 @@ Swagger UI: `http://127.0.0.1:8000/docs`
 
 - Python 3.12, FastAPI, SQLAlchemy, SQLite
 - Pydantic, SlowAPI, NumPy, SciPy
-- React + Vite *(frontend, in progress)*
+- React + Vite 
 
 ## Team
 
 | Name | Role | GitHub |
 |------|------|--------|
-| Maksym Baran | Backend | [@jacobstxt](https://github.com/jacobstxt) |
+| Maksym Baran | Frontend | [@jacobstxt](https://github.com/jacobstxt) |
 | Stanislav Savosh | Backend | [@Stanislave19](https://github.com/Stanislave19) |
 | Stanislav Kaluh | Backend | [@Kaluh-dev](https://github.com/Kaluh-dev) |
+| Danylo Rubelskiy | Backend | [@danilorubelskij-design](https://github.com/danilorubelskij-design) |
