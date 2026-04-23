@@ -57,14 +57,92 @@ class WeatherFetchRequest(BaseModel):
 
 def run_simulation(task_id: int, req: SimulationRequest):
     from database.db import SessionLocal
+    from datetime import date, timedelta
+    from services.open_meteo import fetch_weather_data
+    import asyncio
+
     db = SessionLocal()
     try:
-        f = functools.partial(
-            soil_moisture_temperature,
-            rain=req.daily_rain,
-            solar=req.solar_radiation
+        # Визначаємо діапазон дат — останні N днів
+        date_to = date.today()
+        date_from = date_to - timedelta(days=int(req.days))
+
+        # Шукаємо et0 в БД
+        weather_records = db.query(WeatherData).filter(
+            WeatherData.region_id == req.region_id,
+            WeatherData.date >= date_from,
+            WeatherData.date <= date_to
+        ).order_by(WeatherData.date).all()
+
+        # Якщо немає даних — завантажуємо з Open-Meteo
+        if not weather_records:
+            loop = asyncio.new_event_loop()
+            weather_data = loop.run_until_complete(
+                fetch_weather_data(
+                    latitude=db.query(Region).filter(
+                        Region.id == req.region_id).first().latitude,
+                    longitude=db.query(Region).filter(
+                        Region.id == req.region_id).first().longitude,
+                    date_from=date_from,
+                    date_to=date_to
+                )
+            )
+            loop.close()
+
+            records = []
+            for day in weather_data:
+                record = WeatherData(
+                    region_id              = req.region_id,
+                    date                   = day["date"],
+                    temperature            = day["temperature"],
+                    precipitation          = day["precipitation"],
+                    humidity               = day["humidity"],
+                    wind_speed             = day["wind_speed"],
+                    et0_evapotranspiration = day["et0_evapotranspiration"],
+                    solar_radiation        = day["solar_radiation"],
+                )
+                records.append(record)
+            db.add_all(records)
+            db.commit()
+            weather_records = records
+
+        # Витягуємо et0 values
+        et0_values = [
+            r.et0_evapotranspiration
+            for r in weather_records
+            if r.et0_evapotranspiration is not None
+        ]
+
+        # Середній дощ з реальних даних
+        avg_rain = sum(
+            r.precipitation for r in weather_records
+            if r.precipitation is not None
+        ) / len(weather_records) if weather_records else req.daily_rain
+
+        # Середня сонячна радіація з реальних даних
+        avg_solar = sum(
+            r.solar_radiation for r in weather_records
+            if r.solar_radiation is not None
+        ) / len(weather_records) if weather_records else req.solar_radiation
+
+        # Запускаємо симуляцію з реальними даними
+        from math_engine.ode import get_et0_for_timestep
+
+        def simulation_func(t, y):
+            et0 = get_et0_for_timestep(t, et0_values, req.days) if et0_values else None
+            return soil_moisture_temperature(
+                t, y,
+                rain=avg_rain,
+                solar=avg_solar,
+                et0=et0,
+                crop_coefficient=1.0
+            )
+
+        t, y = runge_kutta_4(
+            simulation_func,
+            [req.initial_moisture, req.initial_temp],
+            0, req.days
         )
-        t, y = runge_kutta_4(f, [req.initial_moisture, req.initial_temp], 0, req.days)
 
         moisture    = [row[0] for row in y]
         temperature = [row[1] for row in y]
@@ -74,7 +152,7 @@ def run_simulation(task_id: int, req: SimulationRequest):
             days             = req.days,
             initial_moisture = req.initial_moisture,
             initial_temp     = req.initial_temp,
-            daily_rain       = req.daily_rain,
+            daily_rain       = avg_rain,
             time_points      = t,
             moisture_data    = moisture,
             temperature_data = temperature
@@ -87,7 +165,10 @@ def run_simulation(task_id: int, req: SimulationRequest):
             "simulation_id": result.id,
             "time":          t,
             "moisture":      moisture,
-            "temperature":   temperature
+            "temperature":   temperature,
+            "used_real_weather": len(et0_values) > 0,
+            "avg_rain":      round(avg_rain, 2),
+            "avg_solar":     round(avg_solar, 2),
         })
     except Exception as e:
         fail_task(task_id, str(e))
