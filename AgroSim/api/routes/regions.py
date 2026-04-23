@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
 import asyncio
 
 from database.db import get_db
 from database.models import Region
+from services.nominatim import search_location
 
 router = APIRouter()
 
@@ -17,9 +18,24 @@ class RegionCreate(BaseModel):
 
 @router.post("/")
 async def create_region(region: RegionCreate, db: Session = Depends(get_db)):
-    db_region = Region(**region.dict())
+    db_region = Region(**region.model_dump())
     await asyncio.to_thread(lambda: (db.add(db_region), db.commit(), db.refresh(db_region)))
     return db_region
+
+@router.get("/search")
+async def search_region_location(
+    query: str = Query(min_length=2),
+    country_code: str = Query(default="ua")
+):
+    if not query.strip():
+        raise HTTPException(status_code=400, detail="Query cannot be empty")
+    try:
+        results = await search_location(query, country_code=country_code)
+        if not results:
+            return {"results": [], "message": "Nothing found"}
+        return {"results": results}
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Nominatim API error: {str(e)}")
 
 @router.get("/")
 async def get_regions(
@@ -46,5 +62,5 @@ async def get_region(region_id: int, db: Session = Depends(get_db)):
         lambda: db.query(Region).filter(Region.id == region_id).first()
     )
     if not region:
-        return {"error": "Region not found"}
+        raise HTTPException(status_code=404, detail="Region not found")
     return region

@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, Request, BackgroundTasks
+from fastapi import APIRouter, Depends, Request, BackgroundTasks, HTTPException
 from sqlalchemy.orm import Session
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
+from datetime import date
 import functools
 import asyncio
 
@@ -9,8 +10,9 @@ from math_engine.interpolation import fill_missing_weather_data
 from math_engine.integration import growing_degree_days
 from math_engine.differentiation import generate_alerts
 from database.db import get_db
-from database.models import SimulationResult
+from database.models import SimulationResult, WeatherData, Region
 from database.task_store import create_task, update_task, fail_task, get_task
+from services.open_meteo import fetch_weather_data
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -41,17 +43,106 @@ class AlertRequest(BaseModel):
     moisture: list[float] = Field(min_length=2)
     threshold: float = Field(default=-2.0, le=0)
 
+class WeatherFetchRequest(BaseModel):
+    region_id: int = Field(ge=1)
+    date_from: date
+    date_to: date
+
+    @validator('date_to')
+    def date_to_must_be_after_date_from(cls, date_to, values):
+        if 'date_from' in values and date_to <= values['date_from']:
+            raise ValueError('date_to must be after date_from')
+        return date_to
+
 
 def run_simulation(task_id: int, req: SimulationRequest):
     from database.db import SessionLocal
+    from datetime import date, timedelta
+    from services.open_meteo import fetch_weather_data
+    import asyncio
+
     db = SessionLocal()
     try:
-        f = functools.partial(
-            soil_moisture_temperature,
-            rain=req.daily_rain,
-            solar=req.solar_radiation
+        # Визначаємо діапазон дат — останні N днів
+        date_to = date.today()
+        date_from = date_to - timedelta(days=int(req.days))
+
+        # Шукаємо et0 в БД
+        weather_records = db.query(WeatherData).filter(
+            WeatherData.region_id == req.region_id,
+            WeatherData.date >= date_from,
+            WeatherData.date <= date_to
+        ).order_by(WeatherData.date).all()
+
+        # Якщо немає даних — завантажуємо з Open-Meteo
+        if not weather_records:
+            loop = asyncio.new_event_loop()
+            weather_data = loop.run_until_complete(
+                fetch_weather_data(
+                    latitude=db.query(Region).filter(
+                        Region.id == req.region_id).first().latitude,
+                    longitude=db.query(Region).filter(
+                        Region.id == req.region_id).first().longitude,
+                    date_from=date_from,
+                    date_to=date_to
+                )
+            )
+            loop.close()
+
+            records = []
+            for day in weather_data:
+                record = WeatherData(
+                    region_id              = req.region_id,
+                    date                   = day["date"],
+                    temperature            = day["temperature"],
+                    precipitation          = day["precipitation"],
+                    humidity               = day["humidity"],
+                    wind_speed             = day["wind_speed"],
+                    et0_evapotranspiration = day["et0_evapotranspiration"],
+                    solar_radiation        = day["solar_radiation"],
+                )
+                records.append(record)
+            db.add_all(records)
+            db.commit()
+            weather_records = records
+
+        # Витягуємо et0 values
+        et0_values = [
+            r.et0_evapotranspiration
+            for r in weather_records
+            if r.et0_evapotranspiration is not None
+        ]
+
+        # Середній дощ з реальних даних
+        avg_rain = sum(
+            r.precipitation for r in weather_records
+            if r.precipitation is not None
+        ) / len(weather_records) if weather_records else req.daily_rain
+
+        # Середня сонячна радіація з реальних даних
+        avg_solar = sum(
+            r.solar_radiation for r in weather_records
+            if r.solar_radiation is not None
+        ) / len(weather_records) if weather_records else req.solar_radiation
+
+        # Запускаємо симуляцію з реальними даними
+        from math_engine.ode import get_et0_for_timestep
+
+        def simulation_func(t, y):
+            et0 = get_et0_for_timestep(t, et0_values, req.days) if et0_values else None
+            return soil_moisture_temperature(
+                t, y,
+                rain=avg_rain,
+                solar=avg_solar,
+                et0=et0,
+                crop_coefficient=1.0
+            )
+
+        t, y = runge_kutta_4(
+            simulation_func,
+            [req.initial_moisture, req.initial_temp],
+            0, req.days
         )
-        t, y = runge_kutta_4(f, [req.initial_moisture, req.initial_temp], 0, req.days)
 
         moisture    = [row[0] for row in y]
         temperature = [row[1] for row in y]
@@ -61,7 +152,7 @@ def run_simulation(task_id: int, req: SimulationRequest):
             days             = req.days,
             initial_moisture = req.initial_moisture,
             initial_temp     = req.initial_temp,
-            daily_rain       = req.daily_rain,
+            daily_rain       = avg_rain,
             time_points      = t,
             moisture_data    = moisture,
             temperature_data = temperature
@@ -74,7 +165,10 @@ def run_simulation(task_id: int, req: SimulationRequest):
             "simulation_id": result.id,
             "time":          t,
             "moisture":      moisture,
-            "temperature":   temperature
+            "temperature":   temperature,
+            "used_real_weather": len(et0_values) > 0,
+            "avg_rain":      round(avg_rain, 2),
+            "avg_solar":     round(avg_solar, 2),
         })
     except Exception as e:
         fail_task(task_id, str(e))
@@ -158,3 +252,96 @@ async def get_alerts(req: AlertRequest):
         req.times, req.moisture, req.threshold
     )
     return {"alerts": alerts, "count": len(alerts)}
+
+@router.post("/fetch")
+async def fetch_weather(req: WeatherFetchRequest, db: Session = Depends(get_db)):
+    region = await asyncio.to_thread(
+        lambda: db.query(Region).filter(Region.id == req.region_id).first()
+    )
+    if not region:
+        raise HTTPException(status_code=404, detail=f"Region with id {req.region_id} not found")
+
+    try:
+        weather_data = await fetch_weather_data(
+            latitude=region.latitude,
+            longitude=region.longitude,
+            date_from=req.date_from,
+            date_to=req.date_to
+        )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Open-Meteo API error: {str(e)}")
+
+    await asyncio.to_thread(
+        lambda: db.query(WeatherData).filter(
+            WeatherData.region_id == req.region_id,
+            WeatherData.date >= req.date_from,
+            WeatherData.date <= req.date_to
+        ).delete()
+    )
+
+    records = []
+    for day in weather_data:
+        record = WeatherData(
+            region_id              = req.region_id,
+            date                   = day["date"],
+            temperature            = day["temperature"],
+            precipitation          = day["precipitation"],
+            humidity               = day["humidity"],
+            wind_speed             = day["wind_speed"],
+            et0_evapotranspiration = day["et0_evapotranspiration"],
+            solar_radiation        = day["solar_radiation"],
+        )
+        records.append(record)
+
+    await asyncio.to_thread(
+        lambda: (db.add_all(records), db.commit())
+    )
+
+    return {
+        "message": f"Successfully fetched {len(records)} days of weather data",
+        "region_id": req.region_id,
+        "date_from": req.date_from,
+        "date_to": req.date_to,
+        "records_count": len(records)
+    }
+
+@router.get("/data/{region_id}")
+async def get_weather_data(
+    region_id: int,
+    date_from: date = None,
+    date_to: date = None,
+    db: Session = Depends(get_db)
+):
+    region = await asyncio.to_thread(
+        lambda: db.query(Region).filter(Region.id == region_id).first()
+    )
+    if not region:
+        raise HTTPException(status_code=404, detail=f"Region with id {region_id} not found")
+
+    def query_data():
+        q = db.query(WeatherData).filter(WeatherData.region_id == region_id)
+        if date_from:
+            q = q.filter(WeatherData.date >= date_from)
+        if date_to:
+            q = q.filter(WeatherData.date <= date_to)
+        return q.order_by(WeatherData.date).all()
+
+    records = await asyncio.to_thread(query_data)
+
+    return {
+        "region_id": region_id,
+        "region_name": region.name,
+        "records_count": len(records),
+        "data": [
+            {
+                "date": r.date,
+                "temperature": r.temperature,
+                "precipitation": r.precipitation,
+                "humidity": r.humidity,
+                "wind_speed": r.wind_speed,
+                "et0_evapotranspiration": r.et0_evapotranspiration,
+                "solar_radiation": r.solar_radiation,
+            }
+            for r in records
+        ]
+    }
