@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useState } from 'react';
+import {AddRegionModal} from "../components/AddRegionModal.tsx";
 
 export function MainLayout() {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -55,7 +56,12 @@ export function MainLayout() {
                 </div>
         </footer>
 
-            {/* TODO: AddRegionModal тут коли створимо */}
+            <AddRegionModal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+            />
+
+
         </div>
     );
 }

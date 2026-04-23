@@ -1,5 +1,5 @@
 import { baseApi } from '../../store/api/baseApi';
-import type { Region, RegionCreate, RegionsResponse } from '../../types';
+import type {LocationSearchResponse, Region, RegionCreate, RegionsResponse} from '../../types';
 
 export const regionsApi = baseApi.injectEndpoints({
     endpoints: (builder) => ({
@@ -19,6 +19,10 @@ export const regionsApi = baseApi.injectEndpoints({
             }),
             invalidatesTags: ['Region'],
         }),
+        searchLocation: builder.query<LocationSearchResponse, { query: string; country_code?: string }>({
+            query: ({ query, country_code = 'ua' }) =>
+                `/regions/search?query=${encodeURIComponent(query)}&country_code=${country_code}`,
+        }),
     }),
 });
 
@@ -26,4 +30,5 @@ export const {
     useGetRegionsQuery,
     useGetRegionQuery,
     useCreateRegionMutation,
+    useLazySearchLocationQuery,
 } = regionsApi;
