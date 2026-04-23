@@ -223,3 +223,44 @@ async def fetch_weather(req: WeatherFetchRequest, db: Session = Depends(get_db))
         "date_to": req.date_to,
         "records_count": len(records)
     }
+
+@router.get("/data/{region_id}")
+async def get_weather_data(
+    region_id: int,
+    date_from: date = None,
+    date_to: date = None,
+    db: Session = Depends(get_db)
+):
+    region = await asyncio.to_thread(
+        lambda: db.query(Region).filter(Region.id == region_id).first()
+    )
+    if not region:
+        raise HTTPException(status_code=404, detail=f"Region with id {region_id} not found")
+
+    def query_data():
+        q = db.query(WeatherData).filter(WeatherData.region_id == region_id)
+        if date_from:
+            q = q.filter(WeatherData.date >= date_from)
+        if date_to:
+            q = q.filter(WeatherData.date <= date_to)
+        return q.order_by(WeatherData.date).all()
+
+    records = await asyncio.to_thread(query_data)
+
+    return {
+        "region_id": region_id,
+        "region_name": region.name,
+        "records_count": len(records),
+        "data": [
+            {
+                "date": r.date,
+                "temperature": r.temperature,
+                "precipitation": r.precipitation,
+                "humidity": r.humidity,
+                "wind_speed": r.wind_speed,
+                "et0_evapotranspiration": r.et0_evapotranspiration,
+                "solar_radiation": r.solar_radiation,
+            }
+            for r in records
+        ]
+    }
