@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, Request, BackgroundTasks
+from fastapi import APIRouter, Depends, Request, BackgroundTasks, HTTPException
 from sqlalchemy.orm import Session
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, validator
+from datetime import date
 import functools
 import asyncio
 
@@ -9,8 +10,9 @@ from math_engine.interpolation import fill_missing_weather_data
 from math_engine.integration import growing_degree_days
 from math_engine.differentiation import generate_alerts
 from database.db import get_db
-from database.models import SimulationResult
+from database.models import SimulationResult, WeatherData, Region
 from database.task_store import create_task, update_task, fail_task, get_task
+from services.open_meteo import fetch_weather_data
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -40,6 +42,17 @@ class AlertRequest(BaseModel):
     times: list[float] = Field(min_length=2)
     moisture: list[float] = Field(min_length=2)
     threshold: float = Field(default=-2.0, le=0)
+
+class WeatherFetchRequest(BaseModel):
+    region_id: int = Field(ge=1)
+    date_from: date
+    date_to: date
+
+    @validator('date_to')
+    def date_to_must_be_after_date_from(cls, date_to, values):
+        if 'date_from' in values and date_to <= values['date_from']:
+            raise ValueError('date_to must be after date_from')
+        return date_to
 
 
 def run_simulation(task_id: int, req: SimulationRequest):
@@ -158,3 +171,55 @@ async def get_alerts(req: AlertRequest):
         req.times, req.moisture, req.threshold
     )
     return {"alerts": alerts, "count": len(alerts)}
+
+@router.post("/fetch")
+async def fetch_weather(req: WeatherFetchRequest, db: Session = Depends(get_db)):
+    region = await asyncio.to_thread(
+        lambda: db.query(Region).filter(Region.id == req.region_id).first()
+    )
+    if not region:
+        raise HTTPException(status_code=404, detail=f"Region with id {req.region_id} not found")
+
+    try:
+        weather_data = await fetch_weather_data(
+            latitude=region.latitude,
+            longitude=region.longitude,
+            date_from=req.date_from,
+            date_to=req.date_to
+        )
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Open-Meteo API error: {str(e)}")
+
+    await asyncio.to_thread(
+        lambda: db.query(WeatherData).filter(
+            WeatherData.region_id == req.region_id,
+            WeatherData.date >= req.date_from,
+            WeatherData.date <= req.date_to
+        ).delete()
+    )
+
+    records = []
+    for day in weather_data:
+        record = WeatherData(
+            region_id              = req.region_id,
+            date                   = day["date"],
+            temperature            = day["temperature"],
+            precipitation          = day["precipitation"],
+            humidity               = day["humidity"],
+            wind_speed             = day["wind_speed"],
+            et0_evapotranspiration = day["et0_evapotranspiration"],
+            solar_radiation        = day["solar_radiation"],
+        )
+        records.append(record)
+
+    await asyncio.to_thread(
+        lambda: (db.add_all(records), db.commit())
+    )
+
+    return {
+        "message": f"Successfully fetched {len(records)} days of weather data",
+        "region_id": req.region_id,
+        "date_from": req.date_from,
+        "date_to": req.date_to,
+        "records_count": len(records)
+    }

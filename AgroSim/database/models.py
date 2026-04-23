@@ -13,13 +13,15 @@ class Region(Base):
 
 class WeatherData(Base):
     __tablename__ = "weather_data"
-    id            = Column(Integer, primary_key=True, index=True)
-    region_id     = Column(Integer, index=True)
-    date          = Column(DateTime, index=True)
-    temperature   = Column(Float)
-    precipitation = Column(Float)
-    humidity      = Column(Float)
-    wind_speed    = Column(Float)
+    id                  = Column(Integer, primary_key=True, index=True)
+    region_id           = Column(Integer, index=True)
+    date                = Column(DateTime, index=True)
+    temperature         = Column(Float)
+    precipitation       = Column(Float)
+    humidity            = Column(Float)
+    wind_speed          = Column(Float)
+    et0_evapotranspiration = Column(Float, nullable=True)
+    solar_radiation     = Column(Float, nullable=True)
 
 class SimulationResult(Base):
     __tablename__ = "simulation_results"
