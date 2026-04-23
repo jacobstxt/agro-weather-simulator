@@ -21,3 +21,15 @@ export interface RegionsResponse {
     limit: number;
     regions: Region[];
 }
+
+
+
+export interface LocationSearchResult {
+    display_name: string;
+    latitude: number;
+    longitude: number;
+}
+
+export interface LocationSearchResponse {
+    results: LocationSearchResult[];
+}

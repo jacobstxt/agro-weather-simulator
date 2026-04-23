@@ -1,13 +1,25 @@
 import './App.css'
-import {RegionsList} from "./features/regions/RegionsList.tsx";
+import {BrowserRouter, Route, Routes} from "react-router-dom";
+import {MainLayout} from "./layouts/MainLayout.tsx";
+import {DashboardPage} from "./pages/DashboardPages.tsx";
+import {SimulationPage} from "./pages/SimulationPage.tsx";
+import {WeatherDataPage} from "./pages/WeatherDataPage.tsx";
+import {ComparisonPage} from "./pages/ComparisonPage.tsx";
+
 
 function App() {
-
-  return (
-    <>
-      <RegionsList />
-    </>
-  )
+    return (
+        <BrowserRouter>
+            <Routes>
+                <Route element={<MainLayout />}>
+                    <Route path="/" element={<DashboardPage />} />
+                    <Route path="/simulation" element={<SimulationPage />} />
+                    <Route path="/weather" element={<WeatherDataPage />} />
+                    <Route path="/comparison" element={<ComparisonPage />} />
+                </Route>
+            </Routes>
+        </BrowserRouter>
+    );
 }
 
 export default App
