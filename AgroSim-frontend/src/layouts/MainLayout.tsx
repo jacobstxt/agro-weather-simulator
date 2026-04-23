@@ -40,6 +40,21 @@ export function MainLayout() {
                 <Outlet />
             </main>
 
+
+            <footer className="border-t border-neutral-800 px-8 py-6 mt-10">
+                <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+                    <div className="text-sm text-gray-400">
+                        © 2026 Weather Simulator · Numerical Methods Course Project
+                    </div>
+
+                    <div className="flex items-center gap-6 text-sm text-gray-400">
+                        <span className="text-gray-500">
+                            ЛНУ ім. І. Франка
+                        </span>
+                    </div>
+                </div>
+        </footer>
+
             {/* TODO: AddRegionModal тут коли створимо */}
         </div>
     );
