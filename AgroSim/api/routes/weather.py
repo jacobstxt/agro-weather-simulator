@@ -178,7 +178,22 @@ def run_simulation(task_id: int, req: SimulationRequest):
 
 @router.post("/simulate")
 @limiter.limit("10/minute")
-async def simulate(request: Request, req: SimulationRequest, background_tasks: BackgroundTasks):
+async def simulate(
+        request: Request,
+        req: SimulationRequest,
+        background_tasks: BackgroundTasks,
+        db: Session = Depends(get_db)
+):
+    region = await asyncio.to_thread(
+        lambda: db.query(Region).filter(Region.id == req.region_id).first()
+    )
+
+    if not region:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Region with id {req.region_id} not found"
+        )
+
     global task_counter
     task_counter += 1
     task_id = task_counter
@@ -187,7 +202,6 @@ async def simulate(request: Request, req: SimulationRequest, background_tasks: B
     background_tasks.add_task(run_simulation, task_id, req)
 
     return {"task_id": task_id, "status": "running"}
-
 
 @router.get("/simulate/status/{task_id}")
 async def get_simulation_status(task_id: int):
