@@ -64,3 +64,20 @@ async def get_region(region_id: int, db: Session = Depends(get_db)):
     if not region:
         raise HTTPException(status_code=404, detail="Region not found")
     return region
+
+
+@router.delete("/{region_id}")
+async def delete_region(region_id: int, db: Session = Depends(get_db)):
+    region = await asyncio.to_thread(
+        lambda: db.query(Region).filter(Region.id == region_id).first()
+    )
+
+    if not region:
+        raise HTTPException(status_code=404, detail="Region not found")
+
+    # Видалення
+    await asyncio.to_thread(
+        lambda: (db.delete(region), db.commit())
+    )
+
+    return {"message": f"Region {region_id} deleted successfully"}
