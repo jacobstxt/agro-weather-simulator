@@ -41,14 +41,16 @@ async def search_region_location(
 async def get_regions(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
+    name: str = Query(default=None),
     db: Session = Depends(get_db)
 ):
-    total, regions = await asyncio.to_thread(
-        lambda: (
-            db.query(Region).count(),
-            db.query(Region).offset(skip).limit(limit).all()
-        )
-    )
+    query = db.query(Region)
+    if name:
+        query = query.filter(Region.name.ilike(f"%{name}%"))
+
+    total = await asyncio.to_thread(query.count)
+    regions = await asyncio.to_thread(lambda: query.offset(skip).limit(limit).all())
+
     return {
         "total": total,
         "skip": skip,
