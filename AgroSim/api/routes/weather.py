@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, BackgroundTasks, HTTPException
+from fastapi import APIRouter, Depends, Request, BackgroundTasks, HTTPException, Query
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field, validator
 from datetime import date
@@ -229,14 +229,29 @@ async def get_simulation(simulation_id: int, db: Session = Depends(get_db)):
         "temperature":    result.temperature_data
     }
 
+
 @router.get("/simulate/region/{region_id}")
-async def get_region_simulations(region_id: int, db: Session = Depends(get_db)):
+async def get_region_simulations(
+        region_id: int,
+        skip: int = Query(default=0, ge=0),
+        limit: int = Query(default=10, ge=1, le=100),
+        db: Session = Depends(get_db)
+):
+    query = db.query(SimulationResult).filter(SimulationResult.region_id == region_id)
+
+    total = await asyncio.to_thread(query.count)
+
     results = await asyncio.to_thread(
-        lambda: db.query(SimulationResult).filter(
-            SimulationResult.region_id == region_id
-        ).all()
+        lambda: query.order_by(SimulationResult.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
     )
+
     return {
+        "total": total,
+        "skip": skip,
+        "limit": limit,
         "simulations": [
             {"id": r.id, "created_at": r.created_at, "days": r.days}
             for r in results
