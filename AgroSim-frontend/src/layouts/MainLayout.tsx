@@ -18,7 +18,7 @@ export function MainLayout() {
                 <div className="max-w-7xl mx-auto flex items-center justify-between">
                     <div className="flex items-center gap-12">
                         <h1 className="font-bold text-lg leading-tight">
-                            Weather<br />Simulator
+                            AgroSim
                         </h1>
                         <nav className="flex gap-2">
                             <NavLink to="/" end className={navItemClass}>Dashboard</NavLink>

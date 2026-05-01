@@ -38,3 +38,15 @@ alembic/versions/*.pyc
 dist/
 build/
 *.egg-info/
+
+# Claude Code
+CLAUDE.md
+.claude/
+
+
+
+
+# Node modules & build
+node_modules/
+dist/
+build/
