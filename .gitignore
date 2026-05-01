@@ -45,3 +45,8 @@ CLAUDE.md
 
 
 
+
+# Node modules & build
+node_modules/
+dist/
+build/
