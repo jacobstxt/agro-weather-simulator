@@ -10,7 +10,7 @@ class Region(Base):
     longitude = Column(Float)
     soil_type = Column(String)
     area_ha   = Column(Float)
-    is_deleted = Column(Boolean, default=False)
+    is_deleted = Column(Boolean, nullable=False, default=False)
 
 class WeatherData(Base):
     __tablename__ = "weather_data"
