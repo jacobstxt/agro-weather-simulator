@@ -237,6 +237,12 @@ async def get_region_simulations(
         limit: int = Query(default=10, ge=1, le=100),
         db: Session = Depends(get_db)
 ):
+    region = await asyncio.to_thread(
+        lambda: db.query(Region).filter(Region.id == region_id, Region.is_deleted.is_(False)).first()
+    )
+    if not region:
+        raise HTTPException(status_code=404, detail="Region not found")
+
     query = db.query(SimulationResult).filter(SimulationResult.region_id == region_id)
 
     total = await asyncio.to_thread(query.count)
