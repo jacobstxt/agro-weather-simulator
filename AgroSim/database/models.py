@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Float, String, DateTime, JSON, Index
+from sqlalchemy import Column, Integer, Float, String, DateTime, JSON, Index, Boolean
 from sqlalchemy.sql import func
 from database.db import Base
 
@@ -10,6 +10,7 @@ class Region(Base):
     longitude = Column(Float)
     soil_type = Column(String)
     area_ha   = Column(Float)
+    is_deleted = Column(Boolean, default=False)
 
 class WeatherData(Base):
     __tablename__ = "weather_data"

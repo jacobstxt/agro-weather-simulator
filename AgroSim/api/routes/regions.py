@@ -41,14 +41,16 @@ async def search_region_location(
 async def get_regions(
     skip: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
+    name: str = Query(default=None),
     db: Session = Depends(get_db)
 ):
-    total, regions = await asyncio.to_thread(
-        lambda: (
-            db.query(Region).count(),
-            db.query(Region).offset(skip).limit(limit).all()
-        )
-    )
+    query = db.query(Region).filter(Region.is_deleted == False)
+    if name:
+        query = query.filter(Region.name.ilike(f"%{name}%"))
+
+    total = await asyncio.to_thread(query.count)
+    regions = await asyncio.to_thread(lambda: query.offset(skip).limit(limit).all())
+
     return {
         "total": total,
         "skip": skip,
@@ -59,8 +61,26 @@ async def get_regions(
 @router.get("/{region_id}")
 async def get_region(region_id: int, db: Session = Depends(get_db)):
     region = await asyncio.to_thread(
-        lambda: db.query(Region).filter(Region.id == region_id).first()
+        lambda: db.query(Region).filter(Region.id == region_id, Region.is_deleted == False).first()
     )
     if not region:
         raise HTTPException(status_code=404, detail="Region not found")
     return region
+
+
+@router.delete("/{region_id}")
+async def delete_region(region_id: int, db: Session = Depends(get_db)):
+    region = await asyncio.to_thread(
+        lambda: db.query(Region).filter(Region.id == region_id).first()
+    )
+
+    if not region:
+        raise HTTPException(status_code=404, detail="Region not found")
+
+    # Видалення
+    region.is_deleted = True
+    await asyncio.to_thread(
+        lambda: (db.refresh(region), db.commit())
+    )
+
+    return {"message": f"Region {region_id} deleted successfully"}
