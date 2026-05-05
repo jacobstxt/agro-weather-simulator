@@ -79,8 +79,6 @@ async def delete_region(region_id: int, db: Session = Depends(get_db)):
 
     # Видалення
     region.is_deleted = True
-    await asyncio.to_thread(
-        lambda: (db.refresh(region), db.commit())
-    )
+    await asyncio.to_thread(lambda: (db.commit(), db.refresh(region)))
 
     return {"message": f"Region {region_id} deleted successfully"}
