@@ -185,7 +185,7 @@ async def simulate(
         db: Session = Depends(get_db)
 ):
     region = await asyncio.to_thread(
-        lambda: db.query(Region).filter(Region.id == req.region_id).first()
+        lambda: db.query(Region).filter(Region.id == req.region_id, Region.is_deleted.is_(False)).first()
     )
 
     if not region:
