@@ -71,12 +71,16 @@ export interface SimulationResult {
     temperature: number[];
 }
 
+export interface TaskResult {
+    simulation_id: number;
+    time: number[];
+    moisture: number[];
+    temperature: number[];
+}
+
 export interface TaskStatus {
     task_id: number;
-    status: 'pending' | 'running' | 'done' | 'error';
-    simulation_id?: number;
-    time?: number[];
-    moisture?: number[];
-    temperature?: number[];
-    detail?: string;
+    status: 'running' | 'done' | 'error';
+    result: TaskResult | null;
+    error: string | null;
 }
