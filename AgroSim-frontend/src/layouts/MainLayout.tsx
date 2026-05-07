@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useState } from 'react';
+import { Plus } from 'lucide-react';
 import {AddRegionModal} from "../components/AddRegionModal.tsx";
 
 export function MainLayout() {
@@ -22,7 +23,6 @@ export function MainLayout() {
                         </h1>
                         <nav className="flex gap-2">
                             <NavLink to="/" end className={navItemClass}>Dashboard</NavLink>
-                            <NavLink to="/simulation" className={navItemClass}>Simulation</NavLink>
                             <NavLink to="/weather" className={navItemClass}>Weather Data</NavLink>
                             <NavLink to="/comparison" className={navItemClass}>Comparison</NavLink>
                         </nav>
@@ -30,9 +30,9 @@ export function MainLayout() {
 
                     <button
                         onClick={() => setIsModalOpen(true)}
-                        className="px-5 py-2.5 border border-neutral-700 rounded-lg hover:bg-white/5 transition"
+                        className="flex items-center gap-2 px-5 py-2.5 border border-neutral-700 rounded-lg hover:bg-white/5 transition"
                     >
-                        + Add region
+                        <Plus size={16} /> Add region
                     </button>
                 </div>
             </header>

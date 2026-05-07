@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { X, Search } from 'lucide-react';
 import { useCreateRegionMutation, useLazySearchLocationQuery } from '../features/regions/regionsApi';
 import type { RegionCreate } from '../types';
 
@@ -81,7 +82,7 @@ export function AddRegionModal({ isOpen, onClose }: AddRegionModalProps) {
                         onClick={onClose}
                         className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition"
                     >
-                        ✕
+                        <X size={16} />
                     </button>
                 </div>
 
@@ -89,7 +90,7 @@ export function AddRegionModal({ isOpen, onClose }: AddRegionModalProps) {
                 <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
 
                     {/* Location Search */}
-                    <Field label="🔍 Пошук населеного пункту">
+                    <Field label={<span className="flex items-center gap-1.5"><Search size={14} />Пошук населеного пункту</span>}>
                         <div className="flex gap-2">
                             <input
                                 type="text"
@@ -237,7 +238,7 @@ export function AddRegionModal({ isOpen, onClose }: AddRegionModalProps) {
     );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
     return (
         <div>
             <label className="block text-sm font-medium text-gray-300 mb-1.5">{label}</label>

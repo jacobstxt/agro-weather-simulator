@@ -76,10 +76,10 @@ export function DashboardPage() {
                                     <StatusBadge status="normal" />
                                 </div>
                                 <Link
-                                    to={`/simulation?region=${region.id}`}
+                                    to={`/regions/${region.id}`}
                                     className="mt-auto inline-block px-4 py-2 border border-neutral-600 rounded-lg text-sm hover:bg-white/5 transition text-center"
                                 >
-                                    Simulate
+                                    Відкрити поле
                                 </Link>
                             </div>
                         ))}

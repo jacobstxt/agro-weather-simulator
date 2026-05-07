@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { X, Loader2, Plus } from 'lucide-react';
 import { useRunSimulationMutation, useGetSimulationStatusQuery } from '../features/weather/weatherApi';
 import type { SimulationRequest, SimulationResult } from '../types';
 
@@ -105,7 +106,7 @@ export function RunSimulationModal({ regionId, isOpen, onClose, onDone }: RunSim
                             onClick={onClose}
                             className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-white/5 transition"
                         >
-                            ✕
+                            <X size={16} />
                         </button>
                     )}
                 </div>
@@ -116,7 +117,7 @@ export function RunSimulationModal({ regionId, isOpen, onClose, onDone }: RunSim
                         <div className="mb-6">
                             <div className="flex items-center justify-between mb-2">
                                 <span className="text-sm text-gray-300">{progressSteps[progressStep]}</span>
-                                <span className="text-xs text-emerald-400 animate-pulse">●</span>
+                                <Loader2 size={14} className="text-emerald-400 animate-spin" />
                             </div>
                             <div className="w-full bg-neutral-800 rounded-full h-2">
                                 <div
@@ -131,7 +132,7 @@ export function RunSimulationModal({ regionId, isOpen, onClose, onDone }: RunSim
                     {/* Помилка */}
                     {isError && (
                         <div className="mb-4 bg-red-500/10 border border-red-500/30 rounded-lg p-3 text-sm text-red-400">
-                            Помилка симуляції: {taskStatus?.detail ?? 'невідома помилка'}
+                            Помилка симуляції: {taskStatus?.error ?? 'невідома помилка'}
                         </div>
                     )}
 
@@ -201,9 +202,12 @@ export function RunSimulationModal({ regionId, isOpen, onClose, onDone }: RunSim
                                 <button
                                     type="submit"
                                     disabled={isStarting}
-                                    className="flex-1 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white font-medium transition disabled:opacity-50"
+                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white font-medium transition disabled:opacity-50"
                                 >
-                                    {isStarting ? 'Запуск...' : 'Запустити'}
+                                    {isStarting
+                                        ? <><Loader2 size={15} className="animate-spin" />Запуск...</>
+                                        : <><Plus size={15} />Запустити</>
+                                    }
                                 </button>
                             </div>
                         </form>
