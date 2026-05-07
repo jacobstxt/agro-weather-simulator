@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom';
+import { ArrowUpRight } from 'lucide-react';
 import { useGetRegionsQuery } from '../features/regions/regionsApi';
+import { useGetSimulationCountQuery } from '../features/weather/weatherApi';
 
 
 const mockStats = {
-    simulations: 12,
     alerts: 2,
     avgMoisture: 47,
 };
@@ -23,6 +24,7 @@ const mockAlerts = [
 
 export function DashboardPage() {
     const { data, isLoading, error } = useGetRegionsQuery({});
+    const { data: simCount } = useGetSimulationCountQuery();
 
     return (
         <div className="space-y-10">
@@ -31,7 +33,7 @@ export function DashboardPage() {
             {/* STATS */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <StatCard label="Regions" value={data?.total ?? 0} />
-                <StatCard label="Simulations" value={mockStats.simulations} />
+                <StatCard label="Simulations" value={simCount?.total ?? '—'} />
                 <StatCard label="Alerts" value={mockStats.alerts} valueClass="text-red-400" />
                 <StatCard label="Avg moisture" value={`${mockStats.avgMoisture}mm`} />
             </div>
@@ -64,24 +66,25 @@ export function DashboardPage() {
                 {data && data.regions.length > 0 && (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         {data.regions.map((region) => (
-                            <div
+                            <Link
                                 key={region.id}
-                                className="flex flex-col bg-neutral-800/50 border border-neutral-700/50 rounded-xl p-5 hover:border-neutral-600 transition"
+                                to={`/regions/${region.id}`}
+                                className="group flex flex-col bg-neutral-800/50 border border-neutral-700/50 rounded-xl p-5 hover:border-emerald-500/50 hover:bg-neutral-800 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-emerald-900/20"
                             >
-                                <h3 className="text-lg font-semibold mb-1">{region.name}</h3>
+                                <div className="flex items-start justify-between mb-1">
+                                    <h3 className="text-lg font-semibold">{region.name}</h3>
+                                    <ArrowUpRight
+                                        size={18}
+                                        className="text-gray-600 group-hover:text-emerald-400 transition-colors duration-200 shrink-0 mt-0.5"
+                                    />
+                                </div>
                                 <p className="text-sm text-gray-400 mb-4">
                                     {region.soil_type} · {region.area_ha} га · {region.latitude.toFixed(1)}°N
                                 </p>
-                                <div className="mb-4">
+                                <div>
                                     <StatusBadge status="normal" />
                                 </div>
-                                <Link
-                                    to={`/regions/${region.id}`}
-                                    className="mt-auto inline-block px-4 py-2 border border-neutral-600 rounded-lg text-sm hover:bg-white/5 transition text-center"
-                                >
-                                    Відкрити поле
-                                </Link>
-                            </div>
+                            </Link>
                         ))}
                     </div>
                 )}

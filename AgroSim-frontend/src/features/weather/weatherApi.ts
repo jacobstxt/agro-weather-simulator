@@ -29,6 +29,11 @@ export const weatherApi = baseApi.injectEndpoints({
                 `/weather/simulate/region/${regionId}?skip=${skip}&limit=${limit}`,
             providesTags: ['Simulation'],
         }),
+
+        getSimulationCount: builder.query<{ total: number }, void>({
+            query: () => '/weather/simulate/count',
+            providesTags: ['Simulation'],
+        }),
     }),
 });
 
@@ -37,4 +42,5 @@ export const {
     useGetSimulationStatusQuery,
     useGetSimulationQuery,
     useGetRegionSimulationsQuery,
+    useGetSimulationCountQuery,
 } = weatherApi;
