@@ -1,7 +1,7 @@
 import { NavLink, Outlet } from 'react-router-dom';
 import { useState } from 'react';
 import { Plus, Sprout, Code2, BookOpen, GraduationCap } from 'lucide-react';
-import { AddRegionModal } from "../components/AddRegionModal.tsx";
+import { AddRegionModal } from "../components/region/AddRegionModal.tsx";
 
 export function MainLayout() {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -23,9 +23,9 @@ export function MainLayout() {
                             <span className="font-bold text-lg tracking-tight">AgroSim</span>
                         </div>
                         <nav className="flex gap-1">
-                            <NavLink to="/" end className={navItemClass}>Dashboard</NavLink>
-                            <NavLink to="/weather" className={navItemClass}>Weather Data</NavLink>
-                            <NavLink to="/comparison" className={navItemClass}>Comparison</NavLink>
+                            <NavLink to="/" end className={navItemClass}>Головна</NavLink>
+                            <NavLink to="/weather" className={navItemClass}>Погодні дані</NavLink>
+                            <NavLink to="/comparison" className={navItemClass}>Порівняння</NavLink>
                         </nav>
                     </div>
 
@@ -33,7 +33,7 @@ export function MainLayout() {
                         onClick={() => setIsModalOpen(true)}
                         className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-medium transition"
                     >
-                        <Plus size={16} /> Add region
+                        <Plus size={16} /> Додати поле
                     </button>
                 </div>
             </header>

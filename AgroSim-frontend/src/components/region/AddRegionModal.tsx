@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Search } from 'lucide-react';
-import { useCreateRegionMutation, useLazySearchLocationQuery } from '../features/regions/regionsApi';
-import type { RegionCreate } from '../types';
+import { useCreateRegionMutation, useLazySearchLocationQuery } from '../../features/regions/regionsApi';
+import type { RegionCreate } from '../../types';
 
 interface AddRegionModalProps {
     isOpen: boolean;

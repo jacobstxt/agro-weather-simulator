@@ -1,5 +1,5 @@
-import { useGetRegionSimulationsQuery } from '../features/weather/weatherApi';
-import type { SimulationListItem } from '../types';
+import { useGetRegionSimulationsQuery } from '../../features/weather/weatherApi';
+import type { SimulationListItem } from '../../types';
 
 interface SimulationListProps {
     regionId: number;

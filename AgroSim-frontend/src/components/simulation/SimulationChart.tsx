@@ -8,7 +8,7 @@ import {
     Tooltip,
     ResponsiveContainer,
 } from 'recharts';
-import type { SimulationResult } from '../types';
+import type { SimulationResult } from '../../types';
 
 interface SimulationChartProps {
     simulation: SimulationResult;

@@ -13,12 +13,12 @@ const mockAlerts = [
     {
         id: 1,
         severity: 'critical' as const,
-        message: 'Поле Тернопіль — soil drying too fast (-8.2 mm/day). Irrigation needed.',
+        message: 'Поле Тернопіль — ґрунт висихає занадто швидко (-8.2 мм/день). Потрібне зрошення.',
     },
     {
         id: 2,
         severity: 'warning' as const,
-        message: 'Поле Рівне — drying rate approaching threshold (-1.8 mm/day). Monitor.',
+        message: 'Поле Рівне — швидкість висихання наближається до порогу (-1.8 мм/день). Спостерігати.',
     },
 ];
 
@@ -28,20 +28,20 @@ export function DashboardPage() {
 
     return (
         <div className="space-y-10">
-            <h1 className="text-3xl font-bold">Dashboard</h1>
+            <h1 className="text-3xl font-bold">Головна</h1>
 
             {/* STATS */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <StatCard label="Regions" value={data?.total ?? 0} />
-                <StatCard label="Simulations" value={simCount?.total ?? '—'} />
-                <StatCard label="Alerts" value={mockStats.alerts} valueClass="text-red-400" />
-                <StatCard label="Avg moisture" value={`${mockStats.avgMoisture}mm`} />
+                <StatCard label="Поля" value={data?.total ?? 0} />
+                <StatCard label="Симуляції" value={simCount?.total ?? '—'} />
+                <StatCard label="Алерти" value={mockStats.alerts} valueClass="text-red-400" />
+                <StatCard label="Сер. вологість" value={`${mockStats.avgMoisture} мм`} />
             </div>
 
 
             <section>
                 <h2 className="text-xs font-semibold tracking-widest text-gray-400 mb-4">
-                    YOUR FIELDS
+                    ВАШІ ПОЛЯ
                 </h2>
 
                 {isLoading && (
@@ -59,7 +59,7 @@ export function DashboardPage() {
                 {data && data.regions.length === 0 && (
                     <div className="bg-neutral-800/30 border-2 border-dashed border-neutral-700 rounded-xl p-8 text-center">
                         <p className="text-gray-300 text-lg">У вас ще немає полів</p>
-                        <p className="text-gray-500 text-sm mt-1">Натисніть "+ Add region" щоб створити перше</p>
+                        <p className="text-gray-500 text-sm mt-1">Натисніть "Додати поле" щоб створити перше</p>
                     </div>
                 )}
 
@@ -93,7 +93,7 @@ export function DashboardPage() {
 
             <section>
                 <h2 className="text-xs font-semibold tracking-widest text-gray-400 mb-4">
-                    ACTIVE ALERTS
+                    АКТИВНІ АЛЕРТИ
                 </h2>
                 <div className="space-y-3">
                     {mockAlerts.map((alert) => (
@@ -131,9 +131,9 @@ function StatusBadge({ status }: { status: FieldStatus }) {
     };
 
     const labels = {
-        normal: 'Normal',
-        'needs-water': 'Needs water',
-        watch: 'Watch',
+        normal: 'Норма',
+        'needs-water': 'Потрібна вода',
+        watch: 'Спостереження',
     };
 
     return (

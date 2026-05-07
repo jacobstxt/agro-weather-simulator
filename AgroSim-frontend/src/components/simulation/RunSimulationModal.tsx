@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X, Loader2, Plus } from 'lucide-react';
-import { useRunSimulationMutation, useGetSimulationStatusQuery } from '../features/weather/weatherApi';
-import type { SimulationRequest, SimulationResult } from '../types';
+import { useRunSimulationMutation, useGetSimulationStatusQuery } from '../../features/weather/weatherApi';
+import type { SimulationRequest, SimulationResult } from '../../types';
 
 interface RunSimulationModalProps {
     regionId: number;

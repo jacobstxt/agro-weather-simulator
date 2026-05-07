@@ -4,9 +4,9 @@ import { ArrowLeft, Leaf, Ruler, MapPin, Plus } from 'lucide-react';
 import { useGetRegionQuery } from '../features/regions/regionsApi';
 import { useGetSimulationQuery, weatherApi } from '../features/weather/weatherApi';
 import { useDispatch } from 'react-redux';
-import { SimulationList } from '../components/SimulationList';
-import { SimulationChart } from '../components/SimulationChart';
-import { RunSimulationModal } from '../components/RunSimulationModal';
+import { SimulationList } from '../components/simulation/SimulationList';
+import { SimulationChart } from '../components/simulation/SimulationChart';
+import { RunSimulationModal } from '../components/simulation/RunSimulationModal';
 import type { SimulationListItem, SimulationResult } from '../types';
 
 type Tab = 'simulations' | 'weather' | 'alerts';
@@ -49,7 +49,7 @@ export function RegionPage() {
             <div className="flex flex-col items-center justify-center py-24 text-center">
                 <p className="text-gray-300 text-lg">Поле не знайдено</p>
                 <Link to="/" className="inline-flex items-center gap-1 text-emerald-400 hover:underline text-sm mt-2">
-                    <ArrowLeft size={15} />Повернутись на Dashboard
+                    <ArrowLeft size={15} />Повернутись на головну
                 </Link>
             </div>
         );
@@ -65,7 +65,7 @@ export function RegionPage() {
         <div className="space-y-6">
             {/* Breadcrumb */}
             <Link to="/" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-300 transition">
-                <ArrowLeft size={15} /> Dashboard
+                <ArrowLeft size={15} /> Головна
             </Link>
 
             {/* Картка регіону */}
