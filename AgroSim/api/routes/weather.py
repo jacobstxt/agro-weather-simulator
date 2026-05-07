@@ -203,6 +203,14 @@ async def simulate(
 
     return {"task_id": task_id, "status": "running"}
 
+@router.get("/simulate/count")
+async def get_simulation_count(db: Session = Depends(get_db)):
+    total = await asyncio.to_thread(
+        lambda: db.query(SimulationResult).count()
+    )
+    return {"total": total}
+
+
 @router.get("/simulate/status/{task_id}")
 async def get_simulation_status(task_id: int):
     task = get_task(task_id)
