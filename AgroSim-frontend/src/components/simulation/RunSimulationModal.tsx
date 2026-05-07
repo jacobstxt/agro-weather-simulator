@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { X, Loader2, Plus } from 'lucide-react';
 import { useRunSimulationMutation, useGetSimulationStatusQuery } from '../../features/weather/weatherApi';
 import type { SimulationRequest, SimulationResult } from '../../types';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 interface RunSimulationModalProps {
     regionId: number;
@@ -140,53 +142,53 @@ export function RunSimulationModal({ regionId, isOpen, onClose, onDone }: RunSim
                     {!isPolling && (
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <Field label="Кількість днів" hint="від 1 до 365">
-                                <input
+                                <Input
                                     type="number"
                                     value={form.days}
                                     min={1} max={365}
                                     onChange={(e) => setForm({ ...form, days: Number(e.target.value) })}
-                                    className={inputClass}
+                                    className="bg-neutral-800 border-neutral-700 text-white rounded-lg h-10 text-sm"
                                 />
                             </Field>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <Field label="Початкова вологість" hint="мм">
-                                    <input
+                                    <Input
                                         type="number"
                                         value={form.initial_moisture}
                                         min={0} max={500}
                                         onChange={(e) => setForm({ ...form, initial_moisture: Number(e.target.value) })}
-                                        className={inputClass}
+                                        className="bg-neutral-800 border-neutral-700 text-white rounded-lg h-10 text-sm"
                                     />
                                 </Field>
                                 <Field label="Початкова температура" hint="°C">
-                                    <input
+                                    <Input
                                         type="number"
                                         value={form.initial_temp}
                                         min={-50} max={60}
                                         onChange={(e) => setForm({ ...form, initial_temp: Number(e.target.value) })}
-                                        className={inputClass}
+                                        className="bg-neutral-800 border-neutral-700 text-white rounded-lg h-10 text-sm"
                                     />
                                 </Field>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <Field label="Добові опади" hint="мм/день">
-                                    <input
+                                    <Input
                                         type="number"
                                         value={form.daily_rain}
                                         min={0} max={200}
                                         onChange={(e) => setForm({ ...form, daily_rain: Number(e.target.value) })}
-                                        className={inputClass}
+                                        className="bg-neutral-800 border-neutral-700 text-white rounded-lg h-10 text-sm"
                                     />
                                 </Field>
                                 <Field label="Сонячна радіація" hint="Вт/м²">
-                                    <input
+                                    <Input
                                         type="number"
                                         value={form.solar_radiation}
                                         min={0} max={1000}
                                         onChange={(e) => setForm({ ...form, solar_radiation: Number(e.target.value) })}
-                                        className={inputClass}
+                                        className="bg-neutral-800 border-neutral-700 text-white rounded-lg h-10 text-sm"
                                     />
                                 </Field>
                             </div>
@@ -195,14 +197,14 @@ export function RunSimulationModal({ regionId, isOpen, onClose, onDone }: RunSim
                                 <button
                                     type="button"
                                     onClick={onClose}
-                                    className="flex-1 px-4 py-2.5 border border-neutral-700 rounded-lg text-gray-300 hover:bg-white/5 transition"
+                                    className="flex-1 px-4 py-2.5 border border-neutral-700 rounded-lg text-sm text-gray-300 hover:bg-white/5 transition"
                                 >
                                     Скасувати
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={isStarting}
-                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white font-medium transition disabled:opacity-50"
+                                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm text-white font-medium transition disabled:opacity-50"
                                 >
                                     {isStarting
                                         ? <><Loader2 size={15} className="animate-spin" />Запуск...</>
@@ -218,14 +220,11 @@ export function RunSimulationModal({ regionId, isOpen, onClose, onDone }: RunSim
     );
 }
 
-const inputClass =
-    'w-full px-3 py-2.5 bg-neutral-800 border border-neutral-700 rounded-lg text-white text-sm focus:outline-none focus:border-emerald-500 transition';
-
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
     return (
-        <div>
-            <div className="flex items-center justify-between mb-1.5">
-                <label className="text-sm font-medium text-gray-300">{label}</label>
+        <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium text-gray-300">{label}</Label>
                 {hint && <span className="text-xs text-gray-500">{hint}</span>}
             </div>
             {children}
