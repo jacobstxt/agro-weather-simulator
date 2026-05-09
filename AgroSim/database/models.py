@@ -11,6 +11,8 @@ class Region(Base):
     soil_type = Column(String)
     area_ha   = Column(Float)
     is_deleted = Column(Boolean, nullable=False, default=False)
+    user_id = Column(Integer, nullable=True)
+
 
 class WeatherData(Base):
     __tablename__ = "weather_data"
@@ -28,6 +30,7 @@ class SimulationResult(Base):
     __tablename__ = "simulation_results"
     id               = Column(Integer, primary_key=True, index=True)
     region_id        = Column(Integer, index=True)
+    user_id = Column(Integer, nullable=True)
     created_at       = Column(DateTime, server_default=func.now(), index=True)
     days             = Column(Float)
     initial_moisture = Column(Float)
@@ -36,3 +39,11 @@ class SimulationResult(Base):
     time_points      = Column(JSON)
     moisture_data    = Column(JSON)
     temperature_data = Column(JSON)
+
+class User(Base):
+      __tablename__ = "users"
+      id              = Column(Integer, primary_key=True, index=True)
+      email           = Column(String, unique=True, index=True, nullable=False)
+      hashed_password = Column(String, nullable=False)
+      first_name      = Column(String, nullable=True)
+      last_name       = Column(String, nullable=True)

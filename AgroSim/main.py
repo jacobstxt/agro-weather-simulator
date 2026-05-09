@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import RedirectResponse
 
-from api.routes import regions, weather
+from api.routes import regions, weather, auth
 from database.db import engine, get_db
 from database import models
 from logger import logger
@@ -37,6 +37,7 @@ async def log_requests(request: Request, call_next):
 
 app.include_router(regions.router, prefix="/api/regions", tags=["regions"])
 app.include_router(weather.router, prefix="/api/weather", tags=["weather"])
+app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 
 @app.get("/", include_in_schema=False)
 def root():
