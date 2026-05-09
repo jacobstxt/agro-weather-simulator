@@ -13,3 +13,5 @@ alembic
 httpx
 python-jose[cryptography]
 passlib[bcrypt]
+pydantic[email]
+bcrypt==4.0.1

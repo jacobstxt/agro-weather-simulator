@@ -41,3 +41,24 @@ def decode_token(token: str):
           return payload.get("sub")
       except JWTError:
           return None
+
+
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy.orm import Session
+from database.db import get_db
+
+bearer_scheme = HTTPBearer()
+
+
+def get_current_user(
+        credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
+        db: Session = Depends(get_db)
+):
+    email = decode_token(credentials.credentials)
+    if not email:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Невалідний токен")
+    user = get_user_by_email(db, email)
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Користувача не знайдено")
+    return user

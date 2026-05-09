@@ -33,7 +33,8 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
     db.add(user)
     db.commit()
     db.refresh(user)
-    return {"id": user.id, "email": user.email}
+    token = create_access_token({"sub": user.email})
+    return {"access_token": token, "token_type": "bearer"}
 
 
 @router.post("/login")
