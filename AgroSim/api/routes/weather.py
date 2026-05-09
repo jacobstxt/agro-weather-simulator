@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends, Request, BackgroundTasks, HTTPException,
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field, validator
 from datetime import date
-import functools
 import asyncio
+
+from sqlalchemy.sql.functions import current_user
 
 from math_engine.ode import runge_kutta_4, soil_moisture_temperature
 from math_engine.interpolation import fill_missing_weather_data
@@ -226,10 +227,11 @@ async def get_simulation_status(task_id: int):
 
 
 @router.get("/simulate/{simulation_id}")
-async def get_simulation(simulation_id: int, db: Session = Depends(get_db)):
+async def get_simulation(simulation_id: int, db: Session = Depends(get_db), current_user : User = Depends(get_current_user)):
   result = await asyncio.to_thread(
       lambda: db.query(SimulationResult).filter(
-          SimulationResult.id == simulation_id
+          SimulationResult.id == simulation_id,
+          SimulationResult.user_id == current_user.id
       ).first()
   )
   if not result:
@@ -310,9 +312,9 @@ async def get_alerts(req: AlertRequest):
 
 
 @router.post("/fetch")
-async def fetch_weather(req: WeatherFetchRequest, db: Session = Depends(get_db)):
+async def fetch_weather(req: WeatherFetchRequest, db: Session = Depends(get_db),  current_user: User = Depends(get_current_user)):
   region = await asyncio.to_thread(
-      lambda: db.query(Region).filter(Region.id == req.region_id).first()
+      lambda: db.query(Region).filter(Region.id == req.region_id,Region.user_id == current_user.id).first()
   )
   if not region:
       raise HTTPException(status_code=404, detail=f"Region with id {req.region_id} not found")
@@ -364,41 +366,45 @@ async def fetch_weather(req: WeatherFetchRequest, db: Session = Depends(get_db))
 
 @router.get("/data/{region_id}")
 async def get_weather_data(
-  region_id: int,
-  date_from: date = None,
-  date_to: date = None,
-  db: Session = Depends(get_db)
-):
-  region = await asyncio.to_thread(
-      lambda: db.query(Region).filter(Region.id == region_id).first()
-  )
-  if not region:
-      raise HTTPException(status_code=404, detail=f"Region with id {region_id} not found")
+      region_id: int,
+      date_from: date = None,
+      date_to: date = None,
+      db: Session = Depends(get_db),
+      current_user: User = Depends(get_current_user)
+  ):
+      region = await asyncio.to_thread(
+          lambda: db.query(Region).filter(
+              Region.id == region_id,
+              Region.user_id == current_user.id
+          ).first()
+      )
+      if not region:
+          raise HTTPException(status_code=404, detail=f"Region with id {region_id} not found")
 
-  def query_data():
-      q = db.query(WeatherData).filter(WeatherData.region_id == region_id)
-      if date_from:
-          q = q.filter(WeatherData.date >= date_from)
-      if date_to:
-          q = q.filter(WeatherData.date <= date_to)
-      return q.order_by(WeatherData.date).all()
+      def query_data():
+          q = db.query(WeatherData).filter(WeatherData.region_id == region_id)
+          if date_from:
+              q = q.filter(WeatherData.date >= date_from)
+          if date_to:
+              q = q.filter(WeatherData.date <= date_to)
+          return q.order_by(WeatherData.date).all()
 
-  records = await asyncio.to_thread(query_data)
+      records = await asyncio.to_thread(query_data)
 
-  return {
-      "region_id": region_id,
-      "region_name": region.name,
-      "records_count": len(records),
-      "data": [
-          {
-              "date": r.date,
-              "temperature": r.temperature,
-              "precipitation": r.precipitation,
-              "humidity": r.humidity,
-              "wind_speed": r.wind_speed,
-              "et0_evapotranspiration": r.et0_evapotranspiration,
-              "solar_radiation": r.solar_radiation,
-          }
-          for r in records
-      ]
-  }
+      return {
+          "region_id": region_id,
+          "region_name": region.name,
+          "records_count": len(records),
+          "data": [
+              {
+                  "date": r.date,
+                  "temperature": r.temperature,
+                  "precipitation": r.precipitation,
+                  "humidity": r.humidity,
+                  "wind_speed": r.wind_speed,
+                  "et0_evapotranspiration": r.et0_evapotranspiration,
+                  "solar_radiation": r.solar_radiation,
+              }
+              for r in records
+          ]
+      }
