@@ -30,6 +30,7 @@ class SimulationResult(Base):
     __tablename__ = "simulation_results"
     id               = Column(Integer, primary_key=True, index=True)
     region_id        = Column(Integer, index=True)
+    user_id = Column(Integer, nullable=True)
     created_at       = Column(DateTime, server_default=func.now(), index=True)
     days             = Column(Float)
     initial_moisture = Column(Float)
