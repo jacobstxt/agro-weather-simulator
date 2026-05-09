@@ -11,6 +11,8 @@ class Region(Base):
     soil_type = Column(String)
     area_ha   = Column(Float)
     is_deleted = Column(Boolean, nullable=False, default=False)
+    user_id = Column(Integer, nullable=True)
+
 
 class WeatherData(Base):
     __tablename__ = "weather_data"
