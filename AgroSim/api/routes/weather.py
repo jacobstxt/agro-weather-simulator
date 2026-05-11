@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Request, BackgroundTasks, HTTPException, Query
 from sqlalchemy.orm import Session
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from datetime import date
 import asyncio
 import threading
@@ -52,16 +52,14 @@ class WeatherFetchRequest(BaseModel):
   date_from: date
   date_to: date
 
-  @validator('date_to')
-  def validate_date_range(cls, date_to, values):
-      if 'date_from' not in values:
-          return date_to
-      date_from = values['date_from']
-      if date_to <= date_from:
-          raise ValueError('date_to must be after date_from')
-      if (date_to - date_from).days > 365:
-          raise ValueError('Date range cannot exceed 365 days')
-      return date_to
+  @model_validator(mode='after')
+  def validate_date_range(self):
+      if self.date_from and self.date_to:
+          if self.date_to <= self.date_from:
+              raise ValueError('date_to must be after date_from')
+          if (self.date_to - self.date_from).days > 365:
+              raise ValueError('Date range cannot exceed 365 days')
+      return self
 
 
 def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
