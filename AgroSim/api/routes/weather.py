@@ -5,7 +5,7 @@ from datetime import date
 import asyncio
 import threading
 
-from math_engine.ode import runge_kutta_4, soil_moisture_temperature
+from math_engine.ode import runge_kutta_4, build_daily_interpolators, soil_moisture_ode, SOIL_PARAMS
 from math_engine.interpolation import fill_missing_weather_data
 from math_engine.integration import growing_degree_days
 from math_engine.differentiation import generate_alerts
@@ -65,7 +65,12 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
 
   db = SessionLocal()
   try:
-      date_to = date.today()
+      region = db.query(Region).filter(Region.id == req.region_id).first()
+      if not region:
+          fail_task(task_id, f"Region {req.region_id} not found")
+          return
+
+      date_to   = date.today()
       date_from = date_to - timedelta(days=int(req.days))
 
       weather_records = db.query(WeatherData).filter(
@@ -75,10 +80,6 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
       ).order_by(WeatherData.date).all()
 
       if not weather_records:
-          region = db.query(Region).filter(Region.id == req.region_id).first()
-          if not region:
-              fail_task(task_id, f"Region {req.region_id} not found")
-              return
           loop = asyncio.new_event_loop()
           weather_data = loop.run_until_complete(
               fetch_weather_data(
@@ -92,7 +93,7 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
 
           records = []
           for day in weather_data:
-              record = WeatherData(
+              records.append(WeatherData(
                   region_id              = req.region_id,
                   date                   = day["date"],
                   temperature            = day["temperature"],
@@ -101,34 +102,34 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
                   wind_speed             = day["wind_speed"],
                   et0_evapotranspiration = day["et0_evapotranspiration"],
                   solar_radiation        = day["solar_radiation"],
-              )
-              records.append(record)
+              ))
           db.add_all(records)
           db.commit()
           weather_records = records
 
-      et0_values = [
-          r.et0_evapotranspiration
-          for r in weather_records
-          if r.et0_evapotranspiration is not None
-      ]
+      # Build daily arrays — missing values fall back to safe defaults
+      daily_rain = [r.precipitation          if r.precipitation          is not None else 0.0  for r in weather_records]
+      daily_et0  = [r.et0_evapotranspiration if r.et0_evapotranspiration is not None else 0.0  for r in weather_records]
+      daily_temp = [r.temperature             if r.temperature             is not None else 15.0 for r in weather_records]
 
-      rain_values = [r.precipitation for r in weather_records if r.precipitation is not None]
-      avg_rain = sum(rain_values) / len(rain_values) if rain_values else req.daily_rain
+      # Cubic spline interpolators — smooth continuous signal between daily points
+      rain_fn = build_daily_interpolators(daily_rain, req.days)
+      et0_fn  = build_daily_interpolators(daily_et0,  req.days)
+      temp_fn = build_daily_interpolators(daily_temp, req.days)
 
-      solar_values = [r.solar_radiation for r in weather_records if r.solar_radiation is not None]
-      avg_solar = sum(solar_values) / len(solar_values) if solar_values else req.solar_radiation
-
-      from math_engine.ode import get_et0_for_timestep
+      # Soil-type specific physical limits
+      soil_key = (region.soil_type or "loam").lower().replace(" ", "_")
+      params   = SOIL_PARAMS.get(soil_key, SOIL_PARAMS["loam"])
 
       def simulation_func(t, y):
-          et0 = get_et0_for_timestep(t, et0_values, req.days) if et0_values else None
-          return soil_moisture_temperature(
+          return soil_moisture_ode(
               t, y,
-              rain=avg_rain,
-              solar=avg_solar,
-              et0=et0,
-              crop_coefficient=1.0
+              rain_fn=rain_fn,
+              et0_fn=et0_fn,
+              temp_fn=temp_fn,
+              crop_coefficient=1.0,
+              field_capacity=params["field_capacity"],
+              wilting_point=params["wilting_point"],
           )
 
       t, y = runge_kutta_4(
@@ -139,6 +140,8 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
 
       moisture    = [row[0] for row in y]
       temperature = [row[1] for row in y]
+
+      avg_rain = sum(daily_rain) / len(daily_rain) if daily_rain else req.daily_rain
 
       result = SimulationResult(
           region_id        = req.region_id,
@@ -156,13 +159,15 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
       db.refresh(result)
 
       update_task(task_id, {
-          "simulation_id": result.id,
-          "time":          t,
-          "moisture":      moisture,
-          "temperature":   temperature,
-          "used_real_weather": len(et0_values) > 0,
-          "avg_rain":      round(avg_rain, 2),
-          "avg_solar":     round(avg_solar, 2),
+          "simulation_id":     result.id,
+          "time":              t,
+          "moisture":          moisture,
+          "temperature":       temperature,
+          "used_real_weather": any(r.et0_evapotranspiration is not None for r in weather_records),
+          "avg_rain":          round(avg_rain, 2),
+          "soil_type":         region.soil_type,
+          "field_capacity":    params["field_capacity"],
+          "wilting_point":     params["wilting_point"],
       })
   except Exception as e:
       fail_task(task_id, str(e))

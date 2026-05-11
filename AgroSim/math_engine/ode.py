@@ -1,11 +1,16 @@
 import numpy as np
+from scipy.interpolate import CubicSpline
+
+SOIL_PARAMS = {
+    "clay":       {"field_capacity": 350, "wilting_point": 200},
+    "loam":       {"field_capacity": 250, "wilting_point": 120},
+    "sandy":      {"field_capacity": 150, "wilting_point":  60},
+    "sandy_loam": {"field_capacity": 180, "wilting_point":  80},
+    "silt_loam":  {"field_capacity": 280, "wilting_point": 140},
+}
+
 
 def runge_kutta_4(f, y0: list, t_start: float, t_end: float, dt: float = 0.1):
-    """
-    Метод Рунге-Кутта 4-го порядку
-    f      - функція f(t, y) -> dy/dt
-    y0     - початкові умови
-    """
     t = np.arange(t_start, t_end, dt)
     y = np.zeros((len(t), len(y0)))
     y[0] = y0
@@ -20,43 +25,71 @@ def runge_kutta_4(f, y0: list, t_start: float, t_end: float, dt: float = 0.1):
     return t.tolist(), y.tolist()
 
 
-def soil_moisture_temperature(t, y, rain: float = 5.0, solar: float = 200.0,
-                               et0: float = None, crop_coefficient: float = 1.0):
+def build_daily_interpolators(daily_values: list, total_days: float):
+    """Cubic spline through daily measurement points."""
+    n = len(daily_values)
+    if n == 0:
+        return lambda t: 0.0
+    if n == 1:
+        v = daily_values[0]
+        return lambda t: v
+    day_indices = np.linspace(0, total_days, n)
+    return CubicSpline(day_indices, daily_values, extrapolate=True)
+
+
+def soil_moisture_ode(t, y, rain_fn, et0_fn, temp_fn,
+                      crop_coefficient: float = 1.0,
+                      field_capacity: float = 250.0,
+                      wilting_point: float = 120.0):
     """
-    Система ОДР для динаміки вологості та температури ґрунту.
+    ODE system driven by real daily weather via cubic spline interpolators.
 
-    y[0] = M — вологість ґрунту (мм)
-    y[1] = T — температура ґрунту (°C)
-
-    Якщо et0 передано — використовуємо реальне випаровування.
-    Якщо ні — використовуємо спрощену формулу.
+    y[0] = M — soil moisture (mm)
+    y[1] = T — soil temperature (°C)
     """
     M, T = y
 
-    if et0 is not None:
-        evaporation = et0 * crop_coefficient
-    else:
-        evaporation = 0.1 * M * (1 + 0.05 * T)
+    rain  = max(0.0, float(rain_fn(t)))
+    et0   = max(0.0, float(et0_fn(t)))
+    T_air = float(temp_fn(t))
 
-    runoff = max(0, M - 100) * 0.3
+    # Actual ET is scaled by moisture stress (no water = no evaporation)
+    available = max(field_capacity - wilting_point, 1.0)
+    stress    = max(0.0, min(1.0, (M - wilting_point) / available))
+    et_actual = et0 * crop_coefficient * stress
 
-    dM_dt = rain - evaporation - runoff
-    dT_dt = 0.01 * solar - 0.5 * (T - 10)
+    # Runoff only above field capacity, non-linear
+    runoff = max(0.0, M - field_capacity) * 0.5
+
+    dM_dt = rain - et_actual - runoff
+
+    # Hard floor at wilting point — soil physically cannot dry further
+    if M <= wilting_point and dM_dt < 0.0:
+        dM_dt = 0.0
+
+    # Soil temperature lags behind air temperature (thermal inertia ~3 days)
+    dT_dt = 0.3 * (T_air - T)
 
     return [dM_dt, dT_dt]
 
 
+def soil_moisture_temperature(t, y, rain: float = 5.0, solar: float = 200.0,
+                               et0: float = None, crop_coefficient: float = 1.0):
+    """Legacy function kept for backward compatibility."""
+    M, T = y
+    if et0 is not None:
+        evaporation = et0 * crop_coefficient
+    else:
+        evaporation = 0.1 * M * (1 + 0.05 * T)
+    runoff = max(0, M - 100) * 0.3
+    dM_dt = rain - evaporation - runoff
+    dT_dt = 0.01 * solar - 0.5 * (T - 10)
+    return [dM_dt, dT_dt]
+
+
 def get_et0_for_timestep(t: float, et0_values: list, total_days: float) -> float:
-    """
-    Повертає et0 для конкретного кроку часу через інтерполяцію.
-    t           - поточний час (дні)
-    et0_values  - список денних значень et0 з БД
-    total_days  - загальна кількість днів симуляції
-    """
+    """Cubic spline interpolation of ET0 (replaces old nearest-neighbor)."""
     if not et0_values:
         return None
-
-    n = len(et0_values)
-    idx = int((t / total_days) * n)
-    idx = min(idx, n - 1)
-    return et0_values[idx]
+    cs = build_daily_interpolators(et0_values, total_days)
+    return max(0.0, float(cs(t)))
