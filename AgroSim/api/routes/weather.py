@@ -53,9 +53,14 @@ class WeatherFetchRequest(BaseModel):
   date_to: date
 
   @validator('date_to')
-  def date_to_must_be_after_date_from(cls, date_to, values):
-      if 'date_from' in values and date_to <= values['date_from']:
+  def validate_date_range(cls, date_to, values):
+      if 'date_from' not in values:
+          return date_to
+      date_from = values['date_from']
+      if date_to <= date_from:
           raise ValueError('date_to must be after date_from')
+      if (date_to - date_from).days > 365:
+          raise ValueError('Date range cannot exceed 365 days')
       return date_to
 
 
