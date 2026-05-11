@@ -1,10 +1,19 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
-import { Plus, Sprout, Code2, BookOpen, GraduationCap } from 'lucide-react';
+import { Plus, Sprout, Code2, BookOpen, GraduationCap, LogOut } from 'lucide-react';
+import { useDispatch } from 'react-redux';
+import { logout } from '../features/auth/authSlice';
 import { AddRegionModal } from "../components/region/AddRegionModal.tsx";
 
 export function MainLayout() {
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const dispatch = useDispatch();
+    const navigate = useNavigate();
+
+    const handleLogout = () => {
+        dispatch(logout());
+        navigate('/login');
+    };
 
     const navItemClass = ({ isActive }: { isActive: boolean }) =>
         `px-4 py-2 rounded-lg font-medium transition-colors text-sm ${
@@ -29,12 +38,20 @@ export function MainLayout() {
                         </nav>
                     </div>
 
-                    <button
-                        onClick={() => setIsModalOpen(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-medium transition"
-                    >
-                        <Plus size={16} /> Додати поле
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setIsModalOpen(true)}
+                            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-sm font-medium transition"
+                        >
+                            <Plus size={16} /> Додати поле
+                        </button>
+                        <button
+                            onClick={handleLogout}
+                            className="flex items-center gap-2 px-4 py-2 text-neutral-400 hover:text-white rounded-lg text-sm font-medium transition"
+                        >
+                            <LogOut size={16} /> Вийти
+                        </button>
+                    </div>
                 </div>
             </header>
 
