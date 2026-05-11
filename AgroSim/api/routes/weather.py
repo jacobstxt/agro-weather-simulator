@@ -3,8 +3,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field, validator
 from datetime import date
 import asyncio
-
-from sqlalchemy.sql.functions import current_user
+import threading
 
 from math_engine.ode import runge_kutta_4, soil_moisture_temperature
 from math_engine.interpolation import fill_missing_weather_data
@@ -21,6 +20,7 @@ from slowapi.util import get_remote_address
 limiter = Limiter(key_func=get_remote_address)
 router = APIRouter()
 task_counter = 0
+_task_lock = threading.Lock()
 
 
 class SimulationRequest(BaseModel):
@@ -75,13 +75,15 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
       ).order_by(WeatherData.date).all()
 
       if not weather_records:
+          region = db.query(Region).filter(Region.id == req.region_id).first()
+          if not region:
+              fail_task(task_id, f"Region {req.region_id} not found")
+              return
           loop = asyncio.new_event_loop()
           weather_data = loop.run_until_complete(
               fetch_weather_data(
-                  latitude=db.query(Region).filter(
-                      Region.id == req.region_id).first().latitude,
-                  longitude=db.query(Region).filter(
-                      Region.id == req.region_id).first().longitude,
+                  latitude=region.latitude,
+                  longitude=region.longitude,
                   date_from=date_from,
                   date_to=date_to
               )
@@ -111,15 +113,11 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
           if r.et0_evapotranspiration is not None
       ]
 
-      avg_rain = sum(
-          r.precipitation for r in weather_records
-          if r.precipitation is not None
-      ) / len(weather_records) if weather_records else req.daily_rain
+      rain_values = [r.precipitation for r in weather_records if r.precipitation is not None]
+      avg_rain = sum(rain_values) / len(rain_values) if rain_values else req.daily_rain
 
-      avg_solar = sum(
-          r.solar_radiation for r in weather_records
-          if r.solar_radiation is not None
-      ) / len(weather_records) if weather_records else req.solar_radiation
+      solar_values = [r.solar_radiation for r in weather_records if r.solar_radiation is not None]
+      avg_solar = sum(solar_values) / len(solar_values) if solar_values else req.solar_radiation
 
       from math_engine.ode import get_et0_for_timestep
 
@@ -196,8 +194,9 @@ async def simulate(
       )
 
   global task_counter
-  task_counter += 1
-  task_id = task_counter
+  with _task_lock:
+      task_counter += 1
+      task_id = task_counter
 
   create_task(task_id)
   background_tasks.add_task(run_simulation, task_id, req, current_user.id)
@@ -222,7 +221,7 @@ async def get_simulation_count(
 async def get_simulation_status(task_id: int):
   task = get_task(task_id)
   if not task:
-      return {"error": "Task not found"}
+      raise HTTPException(status_code=404, detail="Task not found")
   return {"task_id": task_id, **task}
 
 
@@ -235,7 +234,7 @@ async def get_simulation(simulation_id: int, db: Session = Depends(get_db), curr
       ).first()
   )
   if not result:
-      return {"error": "Simulation not found"}
+      raise HTTPException(status_code=404, detail="Simulation not found")
   return {
       "simulation_id":  result.id,
       "region_id":      result.region_id,
@@ -264,7 +263,10 @@ async def get_region_simulations(
   if not region:
       raise HTTPException(status_code=404, detail="Region not found")
 
-  query = db.query(SimulationResult).filter(SimulationResult.region_id == region_id)
+  query = db.query(SimulationResult).filter(
+      SimulationResult.region_id == region_id,
+      SimulationResult.user_id == current_user.id
+  )
   total = await asyncio.to_thread(query.count)
   results = await asyncio.to_thread(
       lambda: query.order_by(SimulationResult.created_at.desc())
@@ -329,14 +331,6 @@ async def fetch_weather(req: WeatherFetchRequest, db: Session = Depends(get_db),
   except Exception as e:
       raise HTTPException(status_code=502, detail=f"Open-Meteo API error: {str(e)}")
 
-  await asyncio.to_thread(
-      lambda: db.query(WeatherData).filter(
-          WeatherData.region_id == req.region_id,
-          WeatherData.date >= req.date_from,
-          WeatherData.date <= req.date_to
-      ).delete()
-  )
-
   records = []
   for day in weather_data:
       record = WeatherData(
@@ -351,9 +345,16 @@ async def fetch_weather(req: WeatherFetchRequest, db: Session = Depends(get_db),
       )
       records.append(record)
 
-  await asyncio.to_thread(
-      lambda: (db.add_all(records), db.commit())
-  )
+  def replace_records():
+      db.query(WeatherData).filter(
+          WeatherData.region_id == req.region_id,
+          WeatherData.date >= req.date_from,
+          WeatherData.date <= req.date_to
+      ).delete()
+      db.add_all(records)
+      db.commit()
+
+  await asyncio.to_thread(replace_records)
 
   return {
       "message": f"Successfully fetched {len(records)} days of weather data",

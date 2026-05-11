@@ -14,8 +14,6 @@ import time
 
 limiter = Limiter(key_func=get_remote_address)
 
-models.Base.metadata.create_all(bind=engine)
-
 app = FastAPI(title="Weather Simulator API")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
@@ -46,11 +44,13 @@ def root():
 @app.get("/health")
 def health():
     db_status = "ok"
+    db = next(get_db())
     try:
-        db = next(get_db())
         db.execute(text("SELECT 1"))
     except Exception as e:
         db_status = f"error: {str(e)}"
+    finally:
+        db.close()
     return {
         "status": "ok" if db_status == "ok" else "degraded",
         "database": db_status,

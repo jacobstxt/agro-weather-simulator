@@ -1,4 +1,5 @@
 from enum import Enum
+import threading
 
 class TaskStatus(str, Enum):
     running = "running"
@@ -6,15 +7,20 @@ class TaskStatus(str, Enum):
     error = "error"
 
 tasks = {}
+_lock = threading.Lock()
 
 def create_task(task_id: int):
-    tasks[task_id] = {"status": TaskStatus.running, "result": None, "error": None}
+    with _lock:
+        tasks[task_id] = {"status": TaskStatus.running, "result": None, "error": None}
 
 def update_task(task_id: int, result: dict):
-    tasks[task_id] = {"status": TaskStatus.done, "result": result, "error": None}
+    with _lock:
+        tasks[task_id] = {"status": TaskStatus.done, "result": result, "error": None}
 
 def fail_task(task_id: int, error: str):
-    tasks[task_id] = {"status": TaskStatus.error, "result": None, "error": error}
+    with _lock:
+        tasks[task_id] = {"status": TaskStatus.error, "result": None, "error": error}
 
 def get_task(task_id: int):
-    return tasks.get(task_id)
+    with _lock:
+        return tasks.get(task_id)
