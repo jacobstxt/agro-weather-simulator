@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field, validator
 from datetime import date
 import asyncio
 import threading
+import traceback
 
 from math_engine.ode import runge_kutta_4, build_daily_interpolators, soil_moisture_ode, SOIL_PARAMS
 from math_engine.interpolation import fill_missing_weather_data
@@ -14,6 +15,7 @@ from database.models import SimulationResult, WeatherData, Region, User
 from database.task_store import create_task, update_task, fail_task, get_task
 from services.open_meteo import fetch_weather_data
 from services.auth import get_current_user
+from logger import logger
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -170,6 +172,7 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
           "wilting_point":     params["wilting_point"],
       })
   except Exception as e:
+      logger.error(f"Simulation task {task_id} failed:\n{traceback.format_exc()}")
       fail_task(task_id, str(e))
   finally:
       db.close()
