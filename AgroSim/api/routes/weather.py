@@ -81,7 +81,8 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
           WeatherData.date <= date_to
       ).order_by(WeatherData.date).all()
 
-      if not weather_records:
+      expected_days = int(req.days)
+      if len(weather_records) < expected_days:
           loop = asyncio.new_event_loop()
           weather_data = loop.run_until_complete(
               fetch_weather_data(
@@ -93,21 +94,29 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
           )
           loop.close()
 
+          existing_dates = {r.date.date() if hasattr(r.date, 'date') else r.date for r in weather_records}
           records = []
           for day in weather_data:
-              records.append(WeatherData(
-                  region_id              = req.region_id,
-                  date                   = day["date"],
-                  temperature            = day["temperature"],
-                  precipitation          = day["precipitation"],
-                  humidity               = day["humidity"],
-                  wind_speed             = day["wind_speed"],
-                  et0_evapotranspiration = day["et0_evapotranspiration"],
-                  solar_radiation        = day["solar_radiation"],
-              ))
-          db.add_all(records)
-          db.commit()
-          weather_records = records
+              day_date = day["date"].date() if hasattr(day["date"], 'date') else day["date"]
+              if day_date not in existing_dates:
+                  records.append(WeatherData(
+                      region_id              = req.region_id,
+                      date                   = day["date"],
+                      temperature            = day["temperature"],
+                      precipitation          = day["precipitation"],
+                      humidity               = day["humidity"],
+                      wind_speed             = day["wind_speed"],
+                      et0_evapotranspiration = day["et0_evapotranspiration"],
+                      solar_radiation        = day["solar_radiation"],
+                  ))
+          if records:
+              db.add_all(records)
+              db.commit()
+          weather_records = db.query(WeatherData).filter(
+              WeatherData.region_id == req.region_id,
+              WeatherData.date >= date_from,
+              WeatherData.date <= date_to
+          ).order_by(WeatherData.date).all()
 
       # Build daily arrays — missing values fall back to safe defaults
       daily_rain = [r.precipitation          if r.precipitation          is not None else 0.0  for r in weather_records]
