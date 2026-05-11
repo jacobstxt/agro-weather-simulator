@@ -1,7 +1,7 @@
 import { baseApi } from '@/store/api/baseApi';
 
 interface LoginRequest {
-    username: string; // FastAPI OAuth2 приймає 'username', передаємо email
+    email: string;
     password: string;
 }
 
@@ -20,22 +20,16 @@ interface AuthResponse {
 export const authApi = baseApi.injectEndpoints({
     endpoints: (builder) => ({
         login: builder.mutation<AuthResponse, LoginRequest>({
-            query: (credentials) => {
-                const body = new URLSearchParams();
-                body.append('username', credentials.username);
-                body.append('password', credentials.password);
-                return {
-                    url: '/auth/login',
-                    method: 'POST',
-                    body,
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                };
-            },
+            query: (credentials) => ({
+                url: '/auth/login',
+                method: 'POST',
+                body: credentials,
+            }),
         }),
         register: builder.mutation<AuthResponse, RegisterRequest>({
             query: (data) => ({
                 url: '/auth/register',
-                method: 'POST',
+            method: 'POST',
                 body: data,
             }),
         }),

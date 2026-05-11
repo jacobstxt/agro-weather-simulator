@@ -16,7 +16,7 @@ export function LoginPage() {
         e.preventDefault();
         setError('');
         try {
-            const result = await login({ username: email, password }).unwrap();
+            const result = await login({ email, password }).unwrap();
             dispatch(setCredentials(result.access_token));
             navigate('/');
         } catch (err: unknown) {
