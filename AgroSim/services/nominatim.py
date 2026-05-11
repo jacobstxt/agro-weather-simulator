@@ -21,7 +21,7 @@ async def search_location(query: str, limit: int = 5, country_code: str = "ua") 
         "User-Agent": "AgroWeatherSimulator/1.0"
     }
 
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=10.0) as client:
         response = await client.get(NOMINATIM_URL, params=params, headers=headers)
         response.raise_for_status()
         data = response.json()
