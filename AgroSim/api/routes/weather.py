@@ -34,17 +34,17 @@ class SimulationRequest(BaseModel):
   solar_radiation: float = Field(default=200.0, ge=0, le=1000)
 
 class InterpolationRequest(BaseModel):
-  known_days: list[float] = Field(min_length=2)
-  known_values: list[float] = Field(min_length=2)
-  all_days: list[float] = Field(min_length=2)
+  known_days: list[float] = Field(min_length=2, max_length=3650)
+  known_values: list[float] = Field(min_length=2, max_length=3650)
+  all_days: list[float] = Field(min_length=2, max_length=3650)
 
 class IntegrationRequest(BaseModel):
-  temperatures: list[float] = Field(min_length=2)
+  temperatures: list[float] = Field(min_length=2, max_length=3650)
   base_temp: float = Field(default=10.0, ge=-50, le=50)
 
 class AlertRequest(BaseModel):
-  times: list[float] = Field(min_length=2)
-  moisture: list[float] = Field(min_length=2)
+  times: list[float] = Field(min_length=2, max_length=3650)
+  moisture: list[float] = Field(min_length=2, max_length=3650)
   threshold: float = Field(default=-2.0, le=0)
 
 class WeatherFetchRequest(BaseModel):
