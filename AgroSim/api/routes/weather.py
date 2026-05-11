@@ -25,6 +25,16 @@ task_counter = 0
 _task_lock = threading.Lock()
 
 
+CROP_COEFFICIENTS = {
+    "wheat":      0.7,
+    "corn":       1.2,
+    "sunflower":  1.0,
+    "soybean":    1.15,
+    "barley":     0.65,
+    "potato":     1.1,
+    "sugar_beet": 1.05,
+}
+
 class SimulationRequest(BaseModel):
   region_id: int = Field(default=1, ge=1)
   days: float = Field(default=30.0, gt=0, le=365)
@@ -32,6 +42,7 @@ class SimulationRequest(BaseModel):
   initial_temp: float = Field(default=15.0, ge=-50, le=60)
   daily_rain: float = Field(default=5.0, ge=0, le=200)
   solar_radiation: float = Field(default=200.0, ge=0, le=1000)
+  crop_type: str = Field(default="wheat", pattern=f"^({'|'.join(CROP_COEFFICIENTS.keys())})$")
 
 class InterpolationRequest(BaseModel):
   known_days: list[float] = Field(min_length=2, max_length=3650)
@@ -135,13 +146,15 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
       soil_key = (region.soil_type or "loam").lower().replace(" ", "_")
       params   = SOIL_PARAMS.get(soil_key, SOIL_PARAMS["loam"])
 
+      crop_coefficient = CROP_COEFFICIENTS.get(req.crop_type, 1.0)
+
       def simulation_func(t, y):
           return soil_moisture_ode(
               t, y,
               rain_fn=rain_fn,
               et0_fn=et0_fn,
               temp_fn=temp_fn,
-              crop_coefficient=1.0,
+              crop_coefficient=crop_coefficient,
               field_capacity=params["field_capacity"],
               wilting_point=params["wilting_point"],
           )
@@ -182,12 +195,19 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
           "soil_type":         region.soil_type,
           "field_capacity":    params["field_capacity"],
           "wilting_point":     params["wilting_point"],
+          "crop_type":         req.crop_type,
+          "crop_coefficient":  crop_coefficient,
       })
   except Exception as e:
       logger.error(f"Simulation task {task_id} failed:\n{traceback.format_exc()}")
       fail_task(task_id, str(e))
   finally:
       db.close()
+
+
+@router.get("/crops")
+async def get_crop_types():
+    return {"crops": [{"key": k, "coefficient": v} for k, v in CROP_COEFFICIENTS.items()]}
 
 
 @router.post("/simulate")
