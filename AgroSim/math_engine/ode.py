@@ -11,6 +11,9 @@ SOIL_PARAMS = {
 
 
 def runge_kutta_4(f, y0: list, t_start: float, t_end: float, dt: float = 0.1):
+    if t_end <= t_start:
+        raise ValueError(f"t_end ({t_end}) must be greater than t_start ({t_start})")
+    dt = min(dt, t_end - t_start)
     t = np.arange(t_start, t_end, dt)
     y = np.zeros((len(t), len(y0)))
     y[0] = y0
