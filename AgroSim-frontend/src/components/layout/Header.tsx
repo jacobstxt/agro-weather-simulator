@@ -120,7 +120,6 @@ export function Header(props: HeaderProps) {
                     )}
                 </div>
 
-                {/* Right side */}
                 <div className="flex items-center gap-2">
                     {isLanding ? (
                         isAuthenticated ? (
