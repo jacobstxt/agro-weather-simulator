@@ -1,15 +1,14 @@
 import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import type { RootState } from '@/store';
-import { motion } from 'framer-motion';
 import {
     ArrowRight, BarChart3, Droplets, Thermometer,
     CloudRain, Globe, Cpu, ShieldCheck, TrendingUp, Activity,
-    MapPinned, Sparkles, CheckCircle2,
+    MapPinned, CheckCircle2,
 } from 'lucide-react';
 import { Header } from '../components/layout/Header';
+import { Footer } from '../components/layout/Footer';
 
-// ─── Static data ──────────────────────────────────────────────────────────────
 
 const METRICS = [
     { icon: <Droplets size={18} />, title: 'Вологість',   value: '68%',    color: 'text-sky-400'     },
@@ -69,10 +68,8 @@ export function LandingPage() {
                 <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center">
 
                     {/* Left */}
-                    <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}>
-                        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 text-sm font-medium mb-8">
-                            <Sparkles size={15} /> AI-powered agricultural analytics
-                        </div>
+                    <div>
+                       
 
                         <h1 className="text-5xl lg:text-7xl font-black leading-[0.95] tracking-tight mb-8">
                             Аналізуй
@@ -110,10 +107,10 @@ export function LandingPage() {
                                 </div>
                             ))}
                         </div>
-                    </motion.div>
+                    </div>
 
-                    {/* Right — demo card */}
-                    <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7 }} className="relative">
+        
+                    <div className="relative">
                         <div className="absolute inset-0 bg-emerald-500/10 blur-3xl rounded-full" />
 
                         <div className="relative bg-white/[0.04] backdrop-blur-2xl border border-white/10 rounded-[32px] p-6 shadow-2xl shadow-black/40">
@@ -146,11 +143,9 @@ export function LandingPage() {
 
                                 <div className="flex items-end gap-2 h-44">
                                     {CHART_BARS.map((h, i) => (
-                                        <motion.div
+                                        <div
                                             key={i}
-                                            initial={{ height: 0 }}
-                                            animate={{ height: `${h}%` }}
-                                            transition={{ duration: 0.6, delay: i * 0.04 }}
+                                            style={{ height: `${h}%` }}
                                             className="flex-1 rounded-t-xl bg-gradient-to-t from-emerald-600 to-emerald-400"
                                         />
                                     ))}
@@ -169,9 +164,10 @@ export function LandingPage() {
                                 ))}
                             </div>
                         </div>
-                    </motion.div>
+                    </div>
                 </div>
             </section>
+
 
             {/* Features */}
             <section className="relative z-10 px-6 lg:px-10 py-24 border-t border-white/5">
@@ -220,45 +216,8 @@ export function LandingPage() {
                 </div>
             </section>
 
-            {/* CTA */}
-            <section className="relative z-10 px-6 lg:px-10 py-32 border-t border-white/5">
-                <div className="max-w-5xl mx-auto">
-                    <div className="relative overflow-hidden rounded-[40px] border border-white/10 bg-gradient-to-b from-emerald-500/10 to-transparent p-14 text-center">
-                        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.2),transparent_50%)]" />
-                        <div className="relative">
-                            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 text-emerald-400 text-sm font-medium mb-6">
-                                <CheckCircle2 size={15} /> Ready to start
-                            </div>
-                            <h2 className="text-5xl font-black leading-tight mb-6">
-                                Почни аналізувати
-                                <span className="text-emerald-400 block">поля вже сьогодні</span>
-                            </h2>
-                            <p className="text-lg text-neutral-400 max-w-2xl mx-auto mb-10">
-                                Безкоштовний доступ до симуляцій, прогнозів та інтерактивної аналітики.
-                            </p>
-                            <Link
-                                to={isAuthenticated ? '/dashboard' : '/register'}
-                                className="inline-flex items-center gap-2 px-8 py-4 bg-emerald-500 hover:bg-emerald-400 rounded-2xl font-semibold transition shadow-2xl shadow-emerald-500/20"
-                            >
-                                Почати зараз <ArrowRight size={18} />
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            {/* Footer */}
-            <footer className="relative z-10 border-t border-white/5">
-                <div className="max-w-7xl mx-auto px-6 lg:px-10 py-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8">
-                    <div className="flex items-center gap-3">
-                        <div>
-                            <div className="font-bold">AgroSim</div>
-                            <div className="text-sm text-neutral-500">Numerical agriculture platform</div>
-                        </div>
-                    </div>
-                    <div className="text-sm text-neutral-600">© 2026 AgroSim. All rights reserved.</div>
-                </div>
-            </footer>
+          
+            <Footer variant="landing" />
         </div>
     );
 }

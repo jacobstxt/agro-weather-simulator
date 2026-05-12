@@ -12,12 +12,10 @@ function App() {
     return (
         <BrowserRouter>
             <Routes>
-                {/* Публічні маршрути */}
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
 
-                {/* Захищені маршрути */}
                 <Route element={<PrivateRoute />}>
                     <Route element={<MainLayout />}>
                         <Route path="/dashboard" element={<DashboardPage />} />
