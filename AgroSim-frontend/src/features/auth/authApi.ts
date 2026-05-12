@@ -17,6 +17,13 @@ interface AuthResponse {
     token_type: string;
 }
 
+export interface UserProfile {
+    id: number;
+    email: string;
+    first_name: string;
+    last_name: string;
+}
+
 export const authApi = baseApi.injectEndpoints({
     endpoints: (builder) => ({
         login: builder.mutation<AuthResponse, LoginRequest>({
@@ -29,11 +36,14 @@ export const authApi = baseApi.injectEndpoints({
         register: builder.mutation<AuthResponse, RegisterRequest>({
             query: (data) => ({
                 url: '/auth/register',
-            method: 'POST',
+                method: 'POST',
                 body: data,
             }),
+        }),
+        getMe: builder.query<UserProfile, void>({
+            query: () => '/auth/me',
         }),
     }),
 });
 
-export const { useLoginMutation, useRegisterMutation } = authApi;
+export const { useLoginMutation, useRegisterMutation, useGetMeQuery } = authApi;

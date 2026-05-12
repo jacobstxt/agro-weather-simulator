@@ -1,6 +1,7 @@
 import './App.css'
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { MainLayout } from "./layouts/MainLayout.tsx";
+import { LandingPage } from "./pages/LandingPage.tsx";
 import { DashboardPage } from "./pages/DashboardPages.tsx";
 import { RegionPage } from "./pages/RegionPage.tsx";
 import { WeatherDataPage } from "./pages/WeatherDataPage.tsx";
@@ -14,13 +15,14 @@ function App() {
         <BrowserRouter>
             <Routes>
                 {/* Публічні маршрути */}
+                <Route path="/" element={<LandingPage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
 
                 {/* Захищені маршрути */}
                 <Route element={<PrivateRoute />}>
                     <Route element={<MainLayout />}>
-                        <Route path="/" element={<DashboardPage />} />
+                        <Route path="/dashboard" element={<DashboardPage />} />
                         <Route path="/regions/:id" element={<RegionPage />} />
                         <Route path="/weather" element={<WeatherDataPage />} />
                         <Route path="/comparison" element={<ComparisonPage />} />
