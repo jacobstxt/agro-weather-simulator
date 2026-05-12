@@ -2,16 +2,6 @@ import { useState, useEffect } from 'react';
 import { X, Search } from 'lucide-react';
 import { useCreateRegionMutation, useLazySearchLocationQuery } from '../../features/regions/regionsApi';
 import type { RegionCreate } from '../../types';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
-import {Button} from "@base-ui/react";
 
 interface AddRegionModalProps {
     isOpen: boolean;
@@ -99,7 +89,7 @@ export function AddRegionModal({ isOpen, onClose }: AddRegionModalProps) {
                     {/* Пошук локації */}
                     <Field label={<span className="flex items-center gap-1.5"><Search size={14} />Пошук населеного пункту</span>}>
                         <div className="flex gap-2">
-                            <Input
+                            <input
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 onKeyDown={(e) => {
@@ -109,16 +99,16 @@ export function AddRegionModal({ isOpen, onClose }: AddRegionModalProps) {
                                     }
                                 }}
                                 placeholder="Львів, Тернопіль, село Зимна Вода..."
-                                className="flex-1 bg-neutral-800 border-neutral-700 text-white placeholder-gray-500 rounded-lg h-10"
+                                className="flex-1 bg-neutral-800 border border-neutral-700 text-white placeholder-gray-500 rounded-lg h-10 px-3 text-sm outline-none focus:border-neutral-500 transition"
                             />
-                            <Button
+                            <button
                                 type="button"
                                 onClick={handleSearch}
                                 disabled={searchQuery.trim().length < 2 || isSearching}
-                                className="bg-emerald-600 hover:bg-emerald-500 rounded-lg px-4"
+                                className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg px-4 text-sm font-medium transition"
                             >
                                 {isSearching ? '...' : 'Пошук'}
-                            </Button>
+                            </button>
                         </div>
 
                         {searchResults && searchResults.results.length > 0 && (
@@ -147,67 +137,65 @@ export function AddRegionModal({ isOpen, onClose }: AddRegionModalProps) {
                     <div className="border-t border-neutral-800 my-4" />
 
                     <Field label="Назва поля">
-                        <Input
+                        <input
                             value={form.name}
                             onChange={(e) => setForm({ ...form, name: e.target.value })}
                             placeholder="Поле Львівщина"
                             required
-                            className="bg-neutral-800 border-neutral-700 text-white placeholder-gray-500 rounded-lg h-10 text-sm"
+                            className="w-full bg-neutral-800 border border-neutral-700 text-white placeholder-gray-500 rounded-lg h-10 px-3 text-sm outline-none focus:border-neutral-500 transition"
                         />
                     </Field>
 
                     <div className="grid grid-cols-2 gap-4">
                         <Field label="Широта">
-                            <Input
+                            <input
                                 type="number"
                                 step="0.0001"
                                 value={form.latitude || ''}
                                 onChange={(e) => setForm({ ...form, latitude: Number(e.target.value) })}
                                 placeholder="49.8397"
                                 required
-                                className="bg-neutral-800 border-neutral-700 text-white placeholder-gray-500 rounded-lg h-10 text-sm"
+                                className="w-full bg-neutral-800 border border-neutral-700 text-white placeholder-gray-500 rounded-lg h-10 px-3 text-sm outline-none focus:border-neutral-500 transition"
                             />
                         </Field>
                         <Field label="Довгота">
-                            <Input
+                            <input
                                 type="number"
                                 step="0.0001"
                                 value={form.longitude || ''}
                                 onChange={(e) => setForm({ ...form, longitude: Number(e.target.value) })}
                                 placeholder="24.0297"
                                 required
-                                className="bg-neutral-800 border-neutral-700 text-white placeholder-gray-500 rounded-lg h-10 text-sm"
+                                className="w-full bg-neutral-800 border border-neutral-700 text-white placeholder-gray-500 rounded-lg h-10 px-3 text-sm outline-none focus:border-neutral-500 transition"
                             />
                         </Field>
                     </div>
 
                     <Field label="Тип ґрунту">
-                        <Select
+                        <select
                             value={form.soil_type}
-                            onValueChange={(val) => val && setForm({ ...form, soil_type: val })}
+                            onChange={(e) => setForm({ ...form, soil_type: e.target.value })}
+                            required
+                            className="w-full bg-neutral-800 border border-neutral-700 text-white rounded-lg h-10 px-3 text-sm outline-none focus:border-neutral-500 transition appearance-none cursor-pointer"
                         >
-                            <SelectTrigger className="w-full bg-neutral-800 border-neutral-700 text-white rounded-lg h-10">
-                                <SelectValue placeholder="Оберіть тип" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-neutral-800 border-neutral-700 text-white">
-                                <SelectItem value="Чорнозем">Чорнозем</SelectItem>
-                                <SelectItem value="Суглинок">Суглинок</SelectItem>
-                                <SelectItem value="Глина">Глина</SelectItem>
-                                <SelectItem value="Пісок">Пісок</SelectItem>
-                                <SelectItem value="Сірий лісовий">Сірий лісовий</SelectItem>
-                            </SelectContent>
-                        </Select>
+                            <option value="" disabled>Оберіть тип</option>
+                            <option value="Чорнозем">Чорнозем</option>
+                            <option value="Суглинок">Суглинок</option>
+                            <option value="Глина">Глина</option>
+                            <option value="Пісок">Пісок</option>
+                            <option value="Сірий лісовий">Сірий лісовий</option>
+                        </select>
                     </Field>
 
                     <Field label="Площа (га)">
-                        <Input
+                        <input
                             type="number"
                             step="0.01"
                             value={form.area_ha || ''}
                             onChange={(e) => setForm({ ...form, area_ha: Number(e.target.value) })}
                             placeholder="50"
                             required
-                            className="bg-neutral-800 border-neutral-700 text-white placeholder-gray-500 rounded-lg h-10 text-sm"
+                            className="w-full bg-neutral-800 border border-neutral-700 text-white placeholder-gray-500 rounded-lg h-10 px-3 text-sm outline-none focus:border-neutral-500 transition"
                         />
                     </Field>
 
@@ -242,7 +230,7 @@ export function AddRegionModal({ isOpen, onClose }: AddRegionModalProps) {
 function Field({ label, children }: { label: React.ReactNode; children: React.ReactNode }) {
     return (
         <div className="space-y-1.5">
-            <Label className="text-sm font-medium text-gray-300">{label}</Label>
+            <label className="text-sm font-medium text-gray-300">{label}</label>
             {children}
         </div>
     );
