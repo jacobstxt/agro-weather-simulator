@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { Plus, LogOut, ArrowRight, ChevronDown, User } from 'lucide-react';
-import { logout } from '../../features/auth/authSlice';
+import { logout } from '../../store/authSlice';
 import { useGetMeQuery } from '../../features/auth/authApi';
 import type { RootState } from '@/store';
 
