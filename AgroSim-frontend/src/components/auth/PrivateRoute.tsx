@@ -4,5 +4,5 @@ import type { RootState } from '@/store';
 
 export function PrivateRoute() {
     const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
-    return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
+    return isAuthenticated ? <Outlet /> : <Navigate to="/" replace />;
 }

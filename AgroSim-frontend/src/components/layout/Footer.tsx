@@ -19,7 +19,7 @@ export function Footer({ variant = 'app' }: FooterProps) {
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div>
                         <div className="font-bold text-base">AgroSim</div>
-                        <div className="text-sm text-neutral-500">Numerical agriculture platform</div>
+                        <div className="text-sm text-neutral-500">Платформа агрономічної аналітики</div>
                     </div>
 
                     <div className="flex items-center gap-6 text-xs text-neutral-600">
@@ -29,7 +29,7 @@ export function Footer({ variant = 'app' }: FooterProps) {
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-neutral-500 hover:text-white transition-colors"
-                            aria-label="GitHub repository"
+                            aria-label="GitHub репозиторій"
                         >
                             <GitHubIcon size={20} />
                         </a>

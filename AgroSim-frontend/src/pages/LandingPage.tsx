@@ -83,7 +83,7 @@ export function LandingPage() {
                         <div className="flex flex-wrap gap-4 mb-14">
                             {isAuthenticated ? (
                                 <Link to="/dashboard" className="px-7 py-4 bg-emerald-500 hover:bg-emerald-400 rounded-2xl font-semibold transition flex items-center gap-2 shadow-2xl shadow-emerald-500/20">
-                                    Відкрити Dashboard <ArrowRight size={17} />
+                                    Відкрити дашборд <ArrowRight size={17} />
                                 </Link>
                             ) : (
                                 <>
@@ -112,10 +112,10 @@ export function LandingPage() {
                         <div className="relative bg-neutral-900 border border-white/10 rounded-[32px] p-6 shadow-2xl shadow-black/40">
                             <div className="flex items-center justify-between mb-8">
                                 <div>
-                                    <div className="text-xs text-neutral-500 uppercase tracking-widest mb-1">Active Simulation</div>
+                                    <div className="text-xs text-neutral-500 uppercase tracking-widest mb-1">Активна симуляція</div>
                                     <div className="text-xl font-bold">Львівська область</div>
                                 </div>
-                                <div className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">LIVE</div>
+                                <div className="px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-medium">НАЖИВО</div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4 mb-6">
@@ -169,7 +169,7 @@ export function LandingPage() {
             <section className="relative z-10 px-6 lg:px-10 py-24 border-t border-white/5">
                 <div className="max-w-7xl mx-auto">
                     <div className="max-w-2xl mb-16">
-                        <div className="text-emerald-400 text-sm font-semibold mb-3">FEATURES</div>
+                        <div className="text-emerald-400 text-sm font-semibold mb-3">МОЖЛИВОСТІ</div>
                         <h2 className="text-4xl font-black mb-5">Все для агрономічної аналітики</h2>
                         <p className="text-neutral-400 text-lg">Інструменти для аналізу, симуляції та прогнозування стану полів.</p>
                     </div>
@@ -192,7 +192,7 @@ export function LandingPage() {
             <section className="relative z-10 px-6 lg:px-10 py-28 border-t border-white/5">
                 <div className="max-w-7xl mx-auto">
                     <div className="text-center mb-20">
-                        <div className="text-emerald-400 text-sm font-semibold mb-4">HOW IT WORKS</div>
+                        <div className="text-emerald-400 text-sm font-semibold mb-4">ЯК ЦЕ ПРАЦЮЄ</div>
                         <h2 className="text-4xl font-black mb-5">Простий процес симуляції</h2>
                         <p className="text-neutral-400 text-lg max-w-2xl mx-auto">Від завантаження даних до прогнозування стану поля.</p>
                     </div>
