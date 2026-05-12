@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { useLoginMutation } from '@/features/auth/authApi';
 import { setCredentials } from '@/features/auth/authSlice';
-import { Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, ArrowLeft } from 'lucide-react';
 
 
 export function LoginPage() {
@@ -51,7 +51,13 @@ export function LoginPage() {
             </div>
 
             {/* Right — form */}
-            <div className="flex-1 flex items-center justify-center px-6 lg:px-16">
+            <div className="flex-1 flex items-center justify-center px-6 lg:px-16 relative">
+                <Link
+                    to="/"
+                    className="absolute top-8 left-8 flex items-center gap-1.5 text-sm text-neutral-500 hover:text-white transition"
+                >
+                    <ArrowLeft size={15} /> Головна
+                </Link>
                 <div className="w-full max-w-sm">
 
                     {/* Mobile logo */}

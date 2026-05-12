@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { useRegisterMutation } from '@/features/auth/authApi';
 import { setCredentials } from '@/features/auth/authSlice';
-import { Eye, EyeOff, ArrowRight } from 'lucide-react';
+import { Eye, EyeOff, ArrowRight, ArrowLeft } from 'lucide-react';
 
 export function RegisterPage() {
     const navigate = useNavigate();
@@ -58,13 +58,14 @@ export function RegisterPage() {
             </div>
 
             {/* Right — form */}
-            <div className="flex-1 flex items-center justify-center px-6 lg:px-16">
+            <div className="flex-1 flex items-center justify-center px-6 lg:px-16 relative">
+                <Link
+                    to="/"
+                    className="absolute top-8 left-8 flex items-center gap-1.5 text-sm text-neutral-500 hover:text-white transition"
+                >
+                    <ArrowLeft size={15} /> Головна
+                </Link>
                 <div className="w-full max-w-sm">
-
-                    {/* Mobile logo */}
-                    <Link to="/" className="flex items-center gap-2 mb-8 lg:hidden">
-                        <span className="font-bold">AgroSim</span>
-                    </Link>
 
                     <div className="mb-8">
                         <h1 className="text-2xl font-black mb-1.5">Реєстрація</h1>
