@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
 import { ArrowUpRight } from 'lucide-react';
-import { useGetRegionsQuery } from '../features/regions/regionsApi';
-import { useGetSimulationCountQuery } from '../features/weather/weatherApi';
+import { useGetRegionsQuery } from '@/features/regions/regionsApi';
+import { useGetSimulationCountQuery } from '@/features/weather/weatherApi';
+
 
 
 const mockStats = {

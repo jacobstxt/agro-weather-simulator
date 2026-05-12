@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr, Field
 from database.db import get_db
 from database import models
-from services.auth import hash_password, verify_password, create_access_token, get_user_by_email
+from services.auth import hash_password, verify_password, create_access_token, get_user_by_email, get_current_user
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 
@@ -49,3 +49,13 @@ def login(request: Request, data: LoginRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Невірний email або пароль")
     token = create_access_token({"sub": user.email})
     return {"access_token": token, "token_type": "bearer"}
+
+
+@router.get("/me")
+def get_me(current_user: models.User = Depends(get_current_user)):
+    return {
+        "id": current_user.id,
+        "email": current_user.email,
+        "first_name": current_user.first_name,
+        "last_name": current_user.last_name,
+    }

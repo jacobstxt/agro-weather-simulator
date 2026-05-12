@@ -1,29 +1,30 @@
 import './App.css'
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { MainLayout } from "./layouts/MainLayout.tsx";
-import { DashboardPage } from "./pages/DashboardPages.tsx";
-import { RegionPage } from "./pages/RegionPage.tsx";
-import { WeatherDataPage } from "./pages/WeatherDataPage.tsx";
-import { ComparisonPage } from "./pages/ComparisonPage.tsx";
-import { LoginPage } from "./pages/LoginPage.tsx";
-import { RegisterPage } from "./pages/RegisterPage.tsx";
+import { LandingPage } from "./pages/LandingPage.tsx";
+import { RegionPage } from "./pages/region/RegionPage.tsx";
+import { LoginPage } from "./pages/auth/LoginPage.tsx";
+import { RegisterPage } from "./pages/auth/RegisterPage.tsx";
 import { PrivateRoute } from "./components/auth/PrivateRoute.tsx";
+import { DashboardPage } from './pages/dashboard/DashboardPage.tsx';
+import { useSelector } from 'react-redux';
+import type { RootState } from './store/index.ts';
 
 function App() {
+    const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+
     return (
         <BrowserRouter>
             <Routes>
-                {/* Публічні маршрути */}
+                <Route path="/" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
+
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
 
-                {/* Захищені маршрути */}
                 <Route element={<PrivateRoute />}>
                     <Route element={<MainLayout />}>
-                        <Route path="/" element={<DashboardPage />} />
+                        <Route path="/dashboard" element={<DashboardPage />} />
                         <Route path="/regions/:id" element={<RegionPage />} />
-                        <Route path="/weather" element={<WeatherDataPage />} />
-                        <Route path="/comparison" element={<ComparisonPage />} />
                     </Route>
                 </Route>
 

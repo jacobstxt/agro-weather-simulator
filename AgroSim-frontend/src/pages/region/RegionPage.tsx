@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeft, Leaf, Ruler, MapPin, Plus } from 'lucide-react';
-import { useGetRegionQuery } from '../features/regions/regionsApi';
-import { useGetSimulationQuery, weatherApi } from '../features/weather/weatherApi';
+import { useGetRegionQuery } from '../../features/regions/regionsApi';
+import { useGetSimulationQuery, weatherApi } from '../../features/weather/weatherApi';
 import { useDispatch } from 'react-redux';
-import { SimulationList } from '../components/simulation/SimulationList';
-import { SimulationChart } from '../components/simulation/SimulationChart';
-import { RunSimulationModal } from '../components/simulation/RunSimulationModal';
-import type { SimulationListItem, SimulationResult } from '../types';
+import { SimulationList } from '../../components/simulation/SimulationList';
+import { SimulationChart } from '../../components/simulation/SimulationChart';
+import { RunSimulationModal } from '../../components/simulation/RunSimulationModal';
+import type { SimulationListItem, SimulationResult } from '../../types';
 
 type Tab = 'simulations' | 'weather' | 'alerts';
 

@@ -2,8 +2,6 @@ import { useState, useEffect } from 'react';
 import { X, Loader2, Plus } from 'lucide-react';
 import { useRunSimulationMutation, useGetSimulationStatusQuery } from '../../features/weather/weatherApi';
 import type { SimulationRequest, SimulationResult } from '../../types';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 
 interface RunSimulationModalProps {
     regionId: number;
@@ -33,7 +31,7 @@ export function RunSimulationModal({ regionId, isOpen, onClose, onDone }: RunSim
         pollingInterval: 1000,
     });
 
-     const isPolling = taskId !== null;
+    const isPolling = taskId !== null;
 
     // Коли симуляція завершилась — передаємо результат батьківському компоненту
     useEffect(() => {
@@ -59,12 +57,10 @@ export function RunSimulationModal({ regionId, isOpen, onClose, onDone }: RunSim
         }
     }, [isOpen]);
 
-
-
-     // Прогрес — симулюємо відсотки на основі часу (бекенд не повертає прогрес)
+    // Прогрес — симулюємо відсотки на основі часу (бекенд не повертає прогрес)
     const progressSteps = ['Запуск...', 'Завантаження погодних даних...', 'Виконання симуляції...', 'Збереження результатів...'];
 
-      useEffect(() => {
+    useEffect(() => {
         if (!isPolling) {
             setProgressStep(0);
             return;
@@ -75,7 +71,7 @@ export function RunSimulationModal({ regionId, isOpen, onClose, onDone }: RunSim
         return () => clearInterval(interval);
     }, [isPolling]);
 
-       if (!isOpen) return null;
+    if (!isOpen) return null;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -83,13 +79,7 @@ export function RunSimulationModal({ regionId, isOpen, onClose, onDone }: RunSim
         setTaskId(result.task_id);
     };
 
-
     const isError = taskStatus?.status === 'error';
-
-
-
-
-
 
     return (
         <div
@@ -142,53 +132,53 @@ export function RunSimulationModal({ regionId, isOpen, onClose, onDone }: RunSim
                     {!isPolling && (
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <Field label="Кількість днів" hint="від 1 до 365">
-                                <Input
+                                <input
                                     type="number"
                                     value={form.days}
                                     min={1} max={365}
                                     onChange={(e) => setForm({ ...form, days: Number(e.target.value) })}
-                                    className="bg-neutral-800 border-neutral-700 text-white rounded-lg h-10 text-sm"
+                                    className="w-full bg-neutral-800 border border-neutral-700 text-white rounded-lg h-10 px-3 text-sm outline-none focus:border-neutral-500 transition"
                                 />
                             </Field>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <Field label="Початкова вологість" hint="мм">
-                                    <Input
+                                    <input
                                         type="number"
                                         value={form.initial_moisture}
                                         min={0} max={500}
                                         onChange={(e) => setForm({ ...form, initial_moisture: Number(e.target.value) })}
-                                        className="bg-neutral-800 border-neutral-700 text-white rounded-lg h-10 text-sm"
+                                        className="w-full bg-neutral-800 border border-neutral-700 text-white rounded-lg h-10 px-3 text-sm outline-none focus:border-neutral-500 transition"
                                     />
                                 </Field>
                                 <Field label="Початкова температура" hint="°C">
-                                    <Input
+                                    <input
                                         type="number"
                                         value={form.initial_temp}
                                         min={-50} max={60}
                                         onChange={(e) => setForm({ ...form, initial_temp: Number(e.target.value) })}
-                                        className="bg-neutral-800 border-neutral-700 text-white rounded-lg h-10 text-sm"
+                                        className="w-full bg-neutral-800 border border-neutral-700 text-white rounded-lg h-10 px-3 text-sm outline-none focus:border-neutral-500 transition"
                                     />
                                 </Field>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <Field label="Добові опади" hint="мм/день">
-                                    <Input
+                                    <input
                                         type="number"
                                         value={form.daily_rain}
                                         min={0} max={200}
                                         onChange={(e) => setForm({ ...form, daily_rain: Number(e.target.value) })}
-                                        className="bg-neutral-800 border-neutral-700 text-white rounded-lg h-10 text-sm"
+                                        className="w-full bg-neutral-800 border border-neutral-700 text-white rounded-lg h-10 px-3 text-sm outline-none focus:border-neutral-500 transition"
                                     />
                                 </Field>
                                 <Field label="Сонячна радіація" hint="Вт/м²">
-                                    <Input
+                                    <input
                                         type="number"
                                         value={form.solar_radiation}
                                         min={0} max={1000}
                                         onChange={(e) => setForm({ ...form, solar_radiation: Number(e.target.value) })}
-                                        className="bg-neutral-800 border-neutral-700 text-white rounded-lg h-10 text-sm"
+                                        className="w-full bg-neutral-800 border border-neutral-700 text-white rounded-lg h-10 px-3 text-sm outline-none focus:border-neutral-500 transition"
                                     />
                                 </Field>
                             </div>
@@ -224,7 +214,7 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
     return (
         <div className="space-y-1.5">
             <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium text-gray-300">{label}</Label>
+                <label className="text-sm font-medium text-gray-300">{label}</label>
                 {hint && <span className="text-xs text-gray-500">{hint}</span>}
             </div>
             {children}
