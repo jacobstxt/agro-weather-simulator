@@ -4,7 +4,7 @@ import type { RootState } from '@/store';
 import {
     ArrowRight, BarChart3, Droplets, Thermometer,
     CloudRain, Globe, Cpu, ShieldCheck, TrendingUp, Activity,
-    MapPinned, CheckCircle2,
+    MapPinned,
 } from 'lucide-react';
 import { Header } from '../components/layout/Header';
 import { Footer } from '../components/layout/Footer';
@@ -54,10 +54,8 @@ export function LandingPage() {
     return (
         <div className="relative min-h-screen bg-[#050505] text-white overflow-hidden">
 
-            {/* Background blobs */}
+            {/* Background */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-[-150px] left-[-100px] w-[500px] h-[500px] bg-emerald-500/20 blur-3xl rounded-full" />
-                <div className="absolute bottom-[-200px] right-[-100px] w-[500px] h-[500px] bg-sky-500/10 blur-3xl rounded-full" />
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.05),transparent_40%)]" />
             </div>
 
@@ -111,9 +109,7 @@ export function LandingPage() {
 
         
                     <div className="relative">
-                        <div className="absolute inset-0 bg-emerald-500/10 blur-3xl rounded-full" />
-
-                        <div className="relative bg-white/[0.04] backdrop-blur-2xl border border-white/10 rounded-[32px] p-6 shadow-2xl shadow-black/40">
+                        <div className="relative bg-neutral-900 border border-white/10 rounded-[32px] p-6 shadow-2xl shadow-black/40">
                             <div className="flex items-center justify-between mb-8">
                                 <div>
                                     <div className="text-xs text-neutral-500 uppercase tracking-widest mb-1">Active Simulation</div>
