@@ -121,3 +121,38 @@ def test_regions_isolation_between_users(client):
 
     resp = client.get("/api/regions/", headers=h2)
     assert resp.json()["total"] == 0
+
+
+def test_create_region_invalid_soil_type(client, auth_headers):
+    payload = {**REGION_PAYLOAD, "soil_type": "invalid_soil"}
+    resp = client.post("/api/regions/", json=payload, headers=auth_headers)
+    assert resp.status_code == 422
+
+
+def test_get_soil_types(client):
+    resp = client.get("/api/regions/soil-types")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "soil_types" in data
+    assert len(data["soil_types"]) == 5
+    keys = [st["key"] for st in data["soil_types"]]
+    assert "clay" in keys
+    assert "loam" in keys
+    assert "sandy" in keys
+    assert "sandy_loam" in keys
+    assert "silt_loam" in keys
+
+
+def test_update_region_invalid_soil_type(client, auth_headers, test_region):
+    region_id = test_region["id"]
+    payload = {"soil_type": "invalid_soil"}
+    resp = client.patch(f"/api/regions/{region_id}", json=payload, headers=auth_headers)
+    assert resp.status_code == 422
+
+
+def test_update_region_valid_soil_type(client, auth_headers, test_region):
+    region_id = test_region["id"]
+    payload = {"soil_type": "clay"}
+    resp = client.patch(f"/api/regions/{region_id}", json=payload, headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["soil_type"] == "clay"
