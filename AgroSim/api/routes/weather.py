@@ -238,7 +238,7 @@ async def simulate(
       task_counter += 1
       task_id = task_counter
 
-  create_task(task_id)
+  create_task(task_id, current_user.id)
   background_tasks.add_task(run_simulation, task_id, req, current_user.id)
 
   return {"task_id": task_id, "status": "running"}
@@ -258,11 +258,16 @@ async def get_simulation_count(
 
 
 @router.get("/simulate/status/{task_id}")
-async def get_simulation_status(task_id: int):
+async def get_simulation_status(
+    task_id: int,
+    current_user: User = Depends(get_current_user)
+):
   task = get_task(task_id)
   if not task:
       raise HTTPException(status_code=404, detail="Task not found")
-  return {"task_id": task_id, **task}
+  if task.get("user_id") != current_user.id:
+      raise HTTPException(status_code=403, detail="Access denied")
+  return {"task_id": task_id, **{k: v for k, v in task.items() if k != "user_id"}}
 
 
 @router.get("/simulate/{simulation_id}")
@@ -327,7 +332,8 @@ async def get_region_simulations(
 
 
 @router.post("/interpolate")
-async def interpolate(req: InterpolationRequest):
+@limiter.limit("30/minute")
+async def interpolate(request: Request, req: InterpolationRequest):
   result = await asyncio.to_thread(
       fill_missing_weather_data,
       req.known_days, req.known_values, req.all_days
@@ -336,7 +342,8 @@ async def interpolate(req: InterpolationRequest):
 
 
 @router.post("/growing-degree-days")
-async def calc_gdd(req: IntegrationRequest):
+@limiter.limit("30/minute")
+async def calc_gdd(request: Request, req: IntegrationRequest):
   gdd = await asyncio.to_thread(
       growing_degree_days,
       req.temperatures, req.base_temp
@@ -345,7 +352,8 @@ async def calc_gdd(req: IntegrationRequest):
 
 
 @router.post("/alerts")
-async def get_alerts(req: AlertRequest):
+@limiter.limit("30/minute")
+async def get_alerts(request: Request, req: AlertRequest):
   alerts = await asyncio.to_thread(
       generate_alerts,
       req.times, req.moisture, req.threshold
