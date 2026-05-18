@@ -9,9 +9,9 @@ class TaskStatus(str, Enum):
 tasks = {}
 _lock = threading.Lock()
 
-def create_task(task_id: int):
+def create_task(task_id: int, user_id: int):
     with _lock:
-        tasks[task_id] = {"status": TaskStatus.running, "result": None, "error": None}
+        tasks[task_id] = {"status": TaskStatus.running, "result": None, "error": None, "user_id": user_id}
 
 def update_task(task_id: int, result: dict):
     with _lock:
