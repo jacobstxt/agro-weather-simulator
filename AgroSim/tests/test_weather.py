@@ -1,4 +1,212 @@
 import pytest
+from datetime import datetime, date, timedelta
+
+
+@pytest.fixture
+def mock_weather_data():
+    base_date = datetime(2024, 1, 1)
+    data = []
+    for i in range(31):
+        data.append({
+            "date":                   base_date + timedelta(days=i),
+            "temperature":            5.0 + (i % 5),
+            "precipitation":          2.5 if i % 7 == 0 else 0.0,
+            "humidity":               80.0 - (i % 10),
+            "wind_speed":             5.0 + (i % 3),
+            "et0_evapotranspiration": 1.2 + (i * 0.01),
+            "solar_radiation":        50.0 + i,
+        })
+    return data
+
+
+# ── /fetch ───────────────────────────────────────────────────────────────────
+
+def test_fetch_weather_success(client, auth_headers, test_region, mocker, mock_weather_data, db):
+    mock_fetch = mocker.patch("api.routes.weather.fetch_weather_data", return_value=mock_weather_data)
+    
+    payload = {
+        "region_id": test_region["id"],
+        "date_from": "2024-01-01",
+        "date_to":   "2024-01-31"
+    }
+    resp = client.post("/api/weather/fetch", json=payload, headers=auth_headers)
+    
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["records_count"] == 31
+    assert "Successfully fetched" in data["message"]
+    
+    # Check DB
+    from database.models import WeatherData
+    count = db.query(WeatherData).filter(WeatherData.region_id == test_region["id"]).count()
+    assert count == 31
+
+
+def test_fetch_weather_api_error(client, auth_headers, test_region, mocker):
+    mocker.patch("api.routes.weather.fetch_weather_data", side_effect=Exception("API Down"))
+    
+    payload = {
+        "region_id": test_region["id"],
+        "date_from": "2024-01-01",
+        "date_to":   "2024-01-05"
+    }
+    resp = client.post("/api/weather/fetch", json=payload, headers=auth_headers)
+    assert resp.status_code == 502
+    assert "Open-Meteo API error" in resp.json()["detail"]
+
+
+def test_fetch_weather_invalid_range(client, auth_headers, test_region):
+    # date_to <= date_from
+    payload = {
+        "region_id": test_region["id"],
+        "date_from": "2024-01-10",
+        "date_to":   "2024-01-01"
+    }
+    resp = client.post("/api/weather/fetch", json=payload, headers=auth_headers)
+    assert resp.status_code == 422
+
+    # range > 365 days
+    payload = {
+        "region_id": test_region["id"],
+        "date_from": "2024-01-01",
+        "date_to":   "2025-02-01"
+    }
+    resp = client.post("/api/weather/fetch", json=payload, headers=auth_headers)
+    assert resp.status_code == 422
+
+
+def test_fetch_weather_other_user_region(client, registered_user, test_region, db):
+    # Create another user
+    resp = client.post("/api/auth/register", json={
+        "email": "other@example.com",
+        "password": "password123",
+        "first_name": "Other",
+        "last_name": "User",
+    })
+    other_token = resp.json()["access_token"]
+    other_headers = {"Authorization": f"Bearer {other_token}"}
+    
+    payload = {
+        "region_id": test_region["id"], # region belongs to test@example.com
+        "date_from": "2024-01-01",
+        "date_to":   "2024-01-05"
+    }
+    resp = client.post("/api/weather/fetch", json=payload, headers=other_headers)
+    assert resp.status_code == 404
+
+
+def test_fetch_weather_overwrite(client, auth_headers, test_region, mocker, mock_weather_data, db):
+    from database.models import WeatherData
+    
+    # Pre-fill some data
+    db.add(WeatherData(
+        region_id=test_region["id"],
+        date=datetime(2024, 1, 1),
+        temperature=10.0,
+        precipitation=0.0,
+        humidity=50.0,
+        wind_speed=0.0,
+        et0_evapotranspiration=0.0,
+        solar_radiation=0.0
+    ))
+    db.commit()
+    
+    mocker.patch("api.routes.weather.fetch_weather_data", return_value=mock_weather_data[:5])
+    
+    payload = {
+        "region_id": test_region["id"],
+        "date_from": "2024-01-01",
+        "date_to":   "2024-01-05"
+    }
+    resp = client.post("/api/weather/fetch", json=payload, headers=auth_headers)
+    assert resp.status_code == 200
+    
+    count = db.query(WeatherData).filter(WeatherData.region_id == test_region["id"]).count()
+    assert count == 5
+    
+    # Verify that the record for 2024-01-01 was updated (new temp is 5.0 from fixture)
+    rec = db.query(WeatherData).filter(WeatherData.region_id == test_region["id"], WeatherData.date == datetime(2024, 1, 1)).first()
+    assert rec.temperature == 5.0
+
+
+# ── /simulate ─────────────────────────────────────────────────────────────────
+
+def test_simulate_success(client, auth_headers, test_region, mocker, mock_weather_data):
+    # Mock both potential triggers of fetch_weather_data
+    mocker.patch("api.routes.weather.fetch_weather_data", return_value=mock_weather_data)
+    # We also need to mock the simulation processing since it's background and uses threads/processes
+    # But the endpoint itself returns quickly
+    
+    payload = {
+        "region_id": test_region["id"],
+        "days": 10,
+        "crop_type": "wheat"
+    }
+    resp = client.post("/api/weather/simulate", json=payload, headers=auth_headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "task_id" in data
+    assert data["status"] == "running"
+
+
+def test_simulate_non_existent_region(client, auth_headers):
+    payload = {
+        "region_id": 9999,
+        "days": 10,
+        "crop_type": "wheat"
+    }
+    resp = client.post("/api/weather/simulate", json=payload, headers=auth_headers)
+    assert resp.status_code == 404
+
+
+def test_simulate_other_user_region(client, test_region):
+    # Register another user
+    resp = client.post("/api/auth/register", json={
+        "email": "sim_other@example.com",
+        "password": "password123",
+        "first_name": "Other",
+        "last_name": "User",
+    })
+    other_token = resp.json()["access_token"]
+    other_headers = {"Authorization": f"Bearer {other_token}"}
+    
+    payload = {
+        "region_id": test_region["id"],
+        "days": 10,
+        "crop_type": "wheat"
+    }
+    resp = client.post("/api/weather/simulate", json=payload, headers=other_headers)
+    assert resp.status_code == 404
+
+
+def test_simulate_invalid_crop(client, auth_headers, test_region):
+    payload = {
+        "region_id": test_region["id"],
+        "days": 10,
+        "crop_type": "invalid_crop"
+    }
+    resp = client.post("/api/weather/simulate", json=payload, headers=auth_headers)
+    assert resp.status_code == 422
+
+
+def test_simulate_invalid_days(client, auth_headers, test_region):
+    # 0 days
+    payload = {
+        "region_id": test_region["id"],
+        "days": 0,
+        "crop_type": "wheat"
+    }
+    resp = client.post("/api/weather/simulate", json=payload, headers=auth_headers)
+    assert resp.status_code == 422
+    
+    # > 365 days
+    payload = {
+        "region_id": test_region["id"],
+        "days": 366,
+        "crop_type": "wheat"
+    }
+    resp = client.post("/api/weather/simulate", json=payload, headers=auth_headers)
+    assert resp.status_code == 422
 
 
 # ── /crops ───────────────────────────────────────────────────────────────────
