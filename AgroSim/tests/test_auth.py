@@ -70,3 +70,60 @@ def test_protected_endpoint_no_token(client):
 def test_protected_endpoint_invalid_token(client):
     resp = client.get("/api/regions/", headers={"Authorization": "Bearer invalidtoken"})
     assert resp.status_code == 401
+
+
+def test_get_me(client, auth_headers):
+    resp = client.get("/api/auth/me", headers=auth_headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["email"] == "test@example.com"
+    assert data["first_name"] == "Test"
+    assert data["last_name"] == "User"
+    assert "hashed_password" not in data
+
+
+def test_update_profile(client, auth_headers):
+    resp = client.patch("/api/auth/me", json={
+        "first_name": "Updated",
+        "last_name": "Name"
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["first_name"] == "Updated"
+    assert data["last_name"] == "Name"
+
+    # Verify via GET /me
+    resp = client.get("/api/auth/me", headers=auth_headers)
+    assert resp.json()["first_name"] == "Updated"
+
+
+def test_change_password_success(client, auth_headers):
+    resp = client.post("/api/auth/change-password", json={
+        "current_password": "password123",
+        "new_password": "newpassword123"
+    }, headers=auth_headers)
+    assert resp.status_code == 200
+
+    # Try login with new password
+    resp = client.post("/api/auth/login", json={
+        "email": "test@example.com",
+        "password": "newpassword123"
+    })
+    assert resp.status_code == 200
+
+
+def test_change_password_wrong_current(client, auth_headers):
+    resp = client.post("/api/auth/change-password", json={
+        "current_password": "wrongpassword",
+        "new_password": "newpassword123"
+    }, headers=auth_headers)
+    assert resp.status_code == 400
+    assert resp.json()["detail"] == "Невірний поточний пароль"
+
+
+def test_change_password_too_short(client, auth_headers):
+    resp = client.post("/api/auth/change-password", json={
+        "current_password": "password123",
+        "new_password": "short"
+    }, headers=auth_headers)
+    assert resp.status_code == 422

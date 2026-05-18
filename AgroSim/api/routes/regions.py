@@ -1,6 +1,9 @@
 from fastapi import APIRouter, Depends, Query, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
+from math_engine.ode import SOIL_PARAMS
+
+VALID_SOIL_TYPES = list(SOIL_PARAMS.keys())
 import asyncio
 
 from database.db import get_db
@@ -14,8 +17,15 @@ class RegionCreate(BaseModel):
       name: str = Field(min_length=1, max_length=100)
       latitude: float = Field(ge=-90, le=90)
       longitude: float = Field(ge=-180, le=180)
-      soil_type: str = Field(min_length=1, max_length=50)
+      soil_type: str = Field(pattern=f"^({'|'.join(VALID_SOIL_TYPES)})$")
       area_ha: float = Field(gt=0, le=100000)
+
+class RegionUpdate(BaseModel):
+      name: str | None = Field(default=None, min_length=1, max_length=100)
+      latitude: float | None = Field(default=None, ge=-90, le=90)
+      longitude: float | None = Field(default=None, ge=-180, le=180)
+      soil_type: str | None = Field(default=None, pattern=f"^({'|'.join(VALID_SOIL_TYPES)})$")
+      area_ha: float | None = Field(default=None, gt=0, le=100000)
 
 @router.post("/")
 async def create_region(
@@ -27,9 +37,19 @@ async def create_region(
       await asyncio.to_thread(lambda: (db.add(db_region), db.commit(), db.refresh(db_region)))
       return db_region
 
+@router.get("/soil-types")
+async def get_soil_types():
+    return {
+        "soil_types": [
+            {"key": k, "field_capacity": v["field_capacity"], "wilting_point": v["wilting_point"]}
+            for k, v in SOIL_PARAMS.items()
+        ]
+    }
+
+
 @router.get("/search")
 async def search_region_location(
-      query: str = Query(min_length=2),
+      query: str = Query(min_length=2, max_length=100),
       country_code: str = Query(default="ua"),
       current_user: User = Depends(get_current_user)
   ):
@@ -81,6 +101,31 @@ async def get_region(
       if not region:
           raise HTTPException(status_code=404, detail="Region not found")
       return region
+
+@router.patch("/{region_id}")
+async def update_region(
+    region_id: int,
+    region_data: RegionUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    db_region = await asyncio.to_thread(
+        lambda: db.query(Region).filter(
+            Region.id == region_id,
+            Region.user_id == current_user.id,
+            Region.is_deleted.is_(False)
+        ).first()
+    )
+    if not db_region:
+        raise HTTPException(status_code=404, detail="Region not found")
+
+    update_dict = region_data.model_dump(exclude_unset=True)
+    for key, value in update_dict.items():
+        setattr(db_region, key, value)
+
+    await asyncio.to_thread(lambda: (db.commit(), db.refresh(db_region)))
+    return db_region
+
 
 @router.delete("/{region_id}")
 async def delete_region(

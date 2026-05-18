@@ -121,3 +121,80 @@ def test_regions_isolation_between_users(client):
 
     resp = client.get("/api/regions/", headers=h2)
     assert resp.json()["total"] == 0
+
+
+def test_create_region_invalid_soil_type(client, auth_headers):
+    payload = {**REGION_PAYLOAD, "soil_type": "invalid_soil"}
+    resp = client.post("/api/regions/", json=payload, headers=auth_headers)
+    assert resp.status_code == 422
+
+
+def test_get_soil_types(client):
+    resp = client.get("/api/regions/soil-types")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert "soil_types" in data
+    assert len(data["soil_types"]) == 5
+    keys = [st["key"] for st in data["soil_types"]]
+    assert "clay" in keys
+    assert "loam" in keys
+    assert "sandy" in keys
+    assert "sandy_loam" in keys
+    assert "silt_loam" in keys
+
+
+def test_update_region_invalid_soil_type(client, auth_headers, test_region):
+    region_id = test_region["id"]
+    payload = {"soil_type": "invalid_soil"}
+    resp = client.patch(f"/api/regions/{region_id}", json=payload, headers=auth_headers)
+    assert resp.status_code == 422
+
+
+def test_update_region_valid_soil_type(client, auth_headers, test_region):
+    region_id = test_region["id"]
+    payload = {"soil_type": "clay"}
+    resp = client.patch(f"/api/regions/{region_id}", json=payload, headers=auth_headers)
+    assert resp.status_code == 200
+    assert resp.json()["soil_type"] == "clay"
+
+
+from unittest.mock import AsyncMock
+
+@pytest.mark.asyncio
+async def test_nominatim_caching(mocker):
+    from services.nominatim import search_location, _cache
+    _cache.clear()
+
+    # Mocking httpx.AsyncClient.get
+    mock_response = mocker.Mock()
+    mock_response.status_code = 200
+    mock_response.json.return_value = [{"display_name": "Test", "lat": "10", "lon": "20"}]
+    mock_response.raise_for_status = mocker.Mock()
+
+    # We need to mock the AsyncClient.get method
+    # Since search_location uses 'async with httpx.AsyncClient() as client:',
+    # we mock the client itself or the search_location dependency.
+    # To test caching, it's better to mock the network call inside search_location.
+
+    mock_get = mocker.patch("httpx.AsyncClient.get", new_callable=AsyncMock)
+    mock_get.return_value = mock_response
+
+    # Перший запит -> API викликається
+    res1 = await search_location("Київ")
+    assert len(res1) == 1
+    assert mock_get.call_count == 1
+
+    # Другий запит з тим самим query -> API НЕ викликається (кеш спрацював)
+    res2 = await search_location("Київ")
+    assert res1 == res2
+    assert mock_get.call_count == 1
+
+    # Різні query -> два окремих виклики API
+    res3 = await search_location("Львів")
+    assert mock_get.call_count == 2
+
+
+def test_search_region_location_query_too_long(client, auth_headers):
+    long_query = "a" * 101
+    resp = client.get(f"/api/regions/search?query={long_query}", headers=auth_headers)
+    assert resp.status_code == 422
