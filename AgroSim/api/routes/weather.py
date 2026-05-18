@@ -52,6 +52,7 @@ class InterpolationRequest(BaseModel):
 class IntegrationRequest(BaseModel):
   temperatures: list[float] = Field(min_length=2, max_length=3650)
   base_temp: float = Field(default=10.0, ge=-50, le=50)
+  max_temp: float = Field(default=30.0, ge=0, le=60)
 
 class AlertRequest(BaseModel):
   times: list[float] = Field(min_length=2, max_length=3650)
@@ -163,6 +164,7 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
               crop_coefficient=crop_coefficient,
               field_capacity=params["field_capacity"],
               wilting_point=params["wilting_point"],
+              soil_type=soil_key,
           )
 
       t, y = runge_kutta_4(
@@ -352,7 +354,7 @@ async def interpolate(request: Request, req: InterpolationRequest):
 async def calc_gdd(request: Request, req: IntegrationRequest):
   gdd = await asyncio.to_thread(
       growing_degree_days,
-      req.temperatures, req.base_temp
+      req.temperatures, req.base_temp, req.max_temp
   )
   return {"growing_degree_days": round(gdd, 2)}
 
