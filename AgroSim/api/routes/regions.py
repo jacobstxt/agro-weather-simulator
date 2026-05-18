@@ -49,7 +49,7 @@ async def get_soil_types():
 
 @router.get("/search")
 async def search_region_location(
-      query: str = Query(min_length=2),
+      query: str = Query(min_length=2, max_length=100),
       country_code: str = Query(default="ua"),
       current_user: User = Depends(get_current_user)
   ):
