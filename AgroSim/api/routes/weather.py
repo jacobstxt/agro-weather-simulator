@@ -81,7 +81,11 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
 
   db = SessionLocal()
   try:
-      region = db.query(Region).filter(Region.id == req.region_id).first()
+      region = db.query(Region).filter(
+          Region.id == req.region_id,
+          Region.user_id == user_id,
+          Region.is_deleted.is_(False)
+      ).first()
       if not region:
           fail_task(task_id, f"Region {req.region_id} not found")
           return
@@ -98,15 +102,17 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
       expected_days = int(req.days)
       if len(weather_records) < expected_days:
           loop = asyncio.new_event_loop()
-          weather_data = loop.run_until_complete(
-              fetch_weather_data(
-                  latitude=region.latitude,
-                  longitude=region.longitude,
-                  date_from=date_from,
-                  date_to=date_to
+          try:
+              weather_data = loop.run_until_complete(
+                  fetch_weather_data(
+                      latitude=region.latitude,
+                      longitude=region.longitude,
+                      date_from=date_from,
+                      date_to=date_to
+                  )
               )
-          )
-          loop.close()
+          finally:
+              loop.close()
 
           existing_dates = {r.date.date() if hasattr(r.date, 'date') else r.date for r in weather_records}
           records = []
@@ -377,7 +383,8 @@ async def fetch_weather(req: WeatherFetchRequest, db: Session = Depends(get_db),
           date_to=req.date_to
       )
   except Exception as e:
-      raise HTTPException(status_code=502, detail=f"Open-Meteo API error: {str(e)}")
+      logger.error(f"Open-Meteo API error: {e}")
+      raise HTTPException(status_code=502, detail="Failed to fetch weather data from external API")
 
   records = []
   for day in weather_data:
@@ -394,13 +401,17 @@ async def fetch_weather(req: WeatherFetchRequest, db: Session = Depends(get_db),
       records.append(record)
 
   def replace_records():
-      db.query(WeatherData).filter(
-          WeatherData.region_id == req.region_id,
-          WeatherData.date >= req.date_from,
-          WeatherData.date <= req.date_to
-      ).delete()
-      db.add_all(records)
-      db.commit()
+      try:
+          db.query(WeatherData).filter(
+              WeatherData.region_id == req.region_id,
+              WeatherData.date >= req.date_from,
+              WeatherData.date <= req.date_to
+          ).delete()
+          db.add_all(records)
+          db.commit()
+      except Exception:
+          db.rollback()
+          raise
 
   await asyncio.to_thread(replace_records)
 

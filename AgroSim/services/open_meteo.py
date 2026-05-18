@@ -47,8 +47,8 @@ async def fetch_weather_data(
                 response.raise_for_status()
                 data = response.json()
                 break
-            except httpx.TimeoutException:
-                last_error = "Request timed out"
+            except (httpx.TimeoutException, httpx.HTTPStatusError) as exc:
+                last_error = str(exc)
                 if attempt < _RETRY_ATTEMPTS - 1:
                     await asyncio.sleep(2 ** attempt)
         else:
@@ -65,17 +65,22 @@ async def fetch_weather_data(
             t_mean = (t_max + t_min) / 2.0
         elif t_max is not None:
             t_mean = t_max - 5.0
+        elif t_min is not None:
+            t_mean = t_min + 5.0
         else:
-            t_mean = None
+            t_mean = 15.0
+
+        def _val(v, default):
+            return v if v is not None else default
 
         result.append({
             "date":                   datetime.strptime(day, "%Y-%m-%d"),
             "temperature":            t_mean,
-            "precipitation":          daily["precipitation_sum"][i],
-            "humidity":               daily["relative_humidity_2m_mean"][i],
-            "wind_speed":             daily["windspeed_10m_max"][i],
-            "et0_evapotranspiration": daily["et0_fao_evapotranspiration"][i],
-            "solar_radiation":        daily["shortwave_radiation_sum"][i],
+            "precipitation":          _val(daily["precipitation_sum"][i], 0.0),
+            "humidity":               _val(daily["relative_humidity_2m_mean"][i], 50.0),
+            "wind_speed":             _val(daily["windspeed_10m_max"][i], 0.0),
+            "et0_evapotranspiration": _val(daily["et0_fao_evapotranspiration"][i], 0.0),
+            "solar_radiation":        _val(daily["shortwave_radiation_sum"][i], 0.0),
         })
 
     return result
