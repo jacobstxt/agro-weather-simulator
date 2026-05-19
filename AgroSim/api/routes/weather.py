@@ -15,6 +15,7 @@ from database.models import SimulationResult, WeatherData, Region, User
 from database.task_store import create_task, update_task, fail_task, get_task
 from services.open_meteo import fetch_weather_data
 from services.auth import get_current_user
+from api.websocket_manager import ws_manager
 from logger import logger
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -80,8 +81,13 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
   from services.open_meteo import fetch_weather_data
   import asyncio
 
+  def _notify(data: dict):
+      ws_manager.notify(task_id, user_id, data)
+
   db = SessionLocal()
   try:
+      _notify({"type": "progress", "step": "checking_region", "percent": 5})
+
       region = db.query(Region).filter(
           Region.id == req.region_id,
           Region.user_id == user_id,
@@ -89,10 +95,13 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
       ).first()
       if not region:
           fail_task(task_id, f"Region {req.region_id} not found")
+          _notify({"type": "error", "status": "error", "message": f"Region {req.region_id} not found"})
           return
 
       date_to   = date.today()
       date_from = date_to - timedelta(days=int(req.days))
+
+      _notify({"type": "progress", "step": "loading_weather", "percent": 15})
 
       weather_records = db.query(WeatherData).filter(
           WeatherData.region_id == req.region_id,
@@ -102,6 +111,8 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
 
       expected_days = int(req.days)
       if len(weather_records) < expected_days:
+          _notify({"type": "progress", "step": "fetching_weather_api", "percent": 25})
+
           loop = asyncio.new_event_loop()
           try:
               weather_data = loop.run_until_complete(
@@ -139,6 +150,8 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
               WeatherData.date <= date_to
           ).order_by(WeatherData.date).all()
 
+      _notify({"type": "progress", "step": "weather_ready", "percent": 40})
+
       # Build daily arrays — missing values fall back to safe defaults
       daily_rain = [r.precipitation          if r.precipitation          is not None else 0.0  for r in weather_records]
       daily_et0  = [r.et0_evapotranspiration if r.et0_evapotranspiration is not None else 0.0  for r in weather_records]
@@ -154,6 +167,8 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
       params   = SOIL_PARAMS.get(soil_key, SOIL_PARAMS["loam"])
 
       crop_coefficient = CROP_COEFFICIENTS.get(req.crop_type, 1.0)
+
+      _notify({"type": "progress", "step": "running_ode", "percent": 55})
 
       def simulation_func(t, y):
           return soil_moisture_ode(
@@ -178,6 +193,8 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
 
       avg_rain = sum(daily_rain) / len(daily_rain) if daily_rain else req.daily_rain
 
+      _notify({"type": "progress", "step": "saving", "percent": 85})
+
       result = SimulationResult(
           region_id        = req.region_id,
           user_id          = user_id,
@@ -193,7 +210,7 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
       db.commit()
       db.refresh(result)
 
-      update_task(task_id, {
+      task_result = {
           "simulation_id":     result.id,
           "time":              t,
           "moisture":          moisture,
@@ -205,10 +222,14 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
           "wilting_point":     params["wilting_point"],
           "crop_type":         req.crop_type,
           "crop_coefficient":  crop_coefficient,
-      })
+      }
+      update_task(task_id, task_result)
+      _notify({"type": "done", "status": "done", "percent": 100, **task_result})
+
   except Exception as e:
       logger.error(f"Simulation task {task_id} failed:\n{traceback.format_exc()}")
       fail_task(task_id, str(e))
+      _notify({"type": "error", "status": "error", "message": str(e)})
   finally:
       db.close()
 
@@ -248,6 +269,12 @@ async def simulate(
 
   create_task(task_id, current_user.id)
   background_tasks.add_task(run_simulation, task_id, req, current_user.id)
+
+  await ws_manager.push_to_user(current_user.id, {
+      "task_id": task_id,
+      "type": "task_created",
+      "status": "running",
+  })
 
   return {"task_id": task_id, "status": "running"}
 
