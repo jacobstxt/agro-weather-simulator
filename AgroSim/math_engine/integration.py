@@ -45,11 +45,11 @@ def adaptive_integration(f, a: float, b: float, tol: float = 1e-6) -> float:
     return _adaptive(a, b, tol, whole)
 
 
-def growing_degree_days(temps: list, base_temp: float = 10.0) -> float:
+def growing_degree_days(temps: list, base_temp: float = 10.0, max_temp: float = 30.0) -> float:
     """
-    Накопичення тепла (Growing Degree Days)
-    Сумарна кількість градусо-днів вище базової температури
+    Накопичення тепла (Growing Degree Days, FAO-56).
+    Температури вище max_temp обрізаються — перегрів не дає більше GDD.
     """
     days = list(range(len(temps)))
-    effective = [max(0, t - base_temp) for t in temps]
+    effective = [max(0.0, min(t, max_temp) - base_temp) for t in temps]
     return simpson_integration(days, effective)

@@ -1,8 +1,11 @@
+import asyncio
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import RedirectResponse
 
 from api.routes import regions, weather, auth
+from api.routes import ws as ws_routes
+from api.websocket_manager import ws_manager
 from database.db import engine, get_db
 from database import models
 from logger import logger
@@ -26,6 +29,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.on_event("startup")
+async def startup():
+    ws_manager.set_loop(asyncio.get_event_loop())
+
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     start = time.time()
@@ -37,6 +44,7 @@ async def log_requests(request: Request, call_next):
 app.include_router(regions.router, prefix="/api/regions", tags=["regions"])
 app.include_router(weather.router, prefix="/api/weather", tags=["weather"])
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
+app.include_router(ws_routes.router, prefix="/api/ws", tags=["websocket"])
 
 @app.get("/", include_in_schema=False)
 def root():

@@ -15,6 +15,7 @@ from database.models import SimulationResult, WeatherData, Region, User
 from database.task_store import create_task, update_task, fail_task, get_task
 from services.open_meteo import fetch_weather_data
 from services.auth import get_current_user
+from api.websocket_manager import ws_manager
 from logger import logger
 from slowapi import Limiter
 from slowapi.util import get_remote_address
@@ -52,6 +53,7 @@ class InterpolationRequest(BaseModel):
 class IntegrationRequest(BaseModel):
   temperatures: list[float] = Field(min_length=2, max_length=3650)
   base_temp: float = Field(default=10.0, ge=-50, le=50)
+  max_temp: float = Field(default=30.0, ge=0, le=60)
 
 class AlertRequest(BaseModel):
   times: list[float] = Field(min_length=2, max_length=3650)
@@ -79,15 +81,27 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
   from services.open_meteo import fetch_weather_data
   import asyncio
 
+  def _notify(data: dict):
+      ws_manager.notify(task_id, user_id, data)
+
   db = SessionLocal()
   try:
-      region = db.query(Region).filter(Region.id == req.region_id).first()
+      _notify({"type": "progress", "step": "checking_region", "percent": 5})
+
+      region = db.query(Region).filter(
+          Region.id == req.region_id,
+          Region.user_id == user_id,
+          Region.is_deleted.is_(False)
+      ).first()
       if not region:
           fail_task(task_id, f"Region {req.region_id} not found")
+          _notify({"type": "error", "status": "error", "message": f"Region {req.region_id} not found"})
           return
 
       date_to   = date.today()
       date_from = date_to - timedelta(days=int(req.days))
+
+      _notify({"type": "progress", "step": "loading_weather", "percent": 15})
 
       weather_records = db.query(WeatherData).filter(
           WeatherData.region_id == req.region_id,
@@ -97,16 +111,20 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
 
       expected_days = int(req.days)
       if len(weather_records) < expected_days:
+          _notify({"type": "progress", "step": "fetching_weather_api", "percent": 25})
+
           loop = asyncio.new_event_loop()
-          weather_data = loop.run_until_complete(
-              fetch_weather_data(
-                  latitude=region.latitude,
-                  longitude=region.longitude,
-                  date_from=date_from,
-                  date_to=date_to
+          try:
+              weather_data = loop.run_until_complete(
+                  fetch_weather_data(
+                      latitude=region.latitude,
+                      longitude=region.longitude,
+                      date_from=date_from,
+                      date_to=date_to
+                  )
               )
-          )
-          loop.close()
+          finally:
+              loop.close()
 
           existing_dates = {r.date.date() if hasattr(r.date, 'date') else r.date for r in weather_records}
           records = []
@@ -132,6 +150,8 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
               WeatherData.date <= date_to
           ).order_by(WeatherData.date).all()
 
+      _notify({"type": "progress", "step": "weather_ready", "percent": 40})
+
       # Build daily arrays — missing values fall back to safe defaults
       daily_rain = [r.precipitation          if r.precipitation          is not None else 0.0  for r in weather_records]
       daily_et0  = [r.et0_evapotranspiration if r.et0_evapotranspiration is not None else 0.0  for r in weather_records]
@@ -148,6 +168,8 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
 
       crop_coefficient = CROP_COEFFICIENTS.get(req.crop_type, 1.0)
 
+      _notify({"type": "progress", "step": "running_ode", "percent": 55})
+
       def simulation_func(t, y):
           return soil_moisture_ode(
               t, y,
@@ -157,6 +179,7 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
               crop_coefficient=crop_coefficient,
               field_capacity=params["field_capacity"],
               wilting_point=params["wilting_point"],
+              soil_type=soil_key,
           )
 
       t, y = runge_kutta_4(
@@ -169,6 +192,8 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
       temperature = [row[1] for row in y]
 
       avg_rain = sum(daily_rain) / len(daily_rain) if daily_rain else req.daily_rain
+
+      _notify({"type": "progress", "step": "saving", "percent": 85})
 
       result = SimulationResult(
           region_id        = req.region_id,
@@ -185,7 +210,7 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
       db.commit()
       db.refresh(result)
 
-      update_task(task_id, {
+      task_result = {
           "simulation_id":     result.id,
           "time":              t,
           "moisture":          moisture,
@@ -197,10 +222,14 @@ def run_simulation(task_id: int, req: SimulationRequest, user_id: int):
           "wilting_point":     params["wilting_point"],
           "crop_type":         req.crop_type,
           "crop_coefficient":  crop_coefficient,
-      })
+      }
+      update_task(task_id, task_result)
+      _notify({"type": "done", "status": "done", "percent": 100, **task_result})
+
   except Exception as e:
       logger.error(f"Simulation task {task_id} failed:\n{traceback.format_exc()}")
       fail_task(task_id, str(e))
+      _notify({"type": "error", "status": "error", "message": str(e)})
   finally:
       db.close()
 
@@ -240,6 +269,12 @@ async def simulate(
 
   create_task(task_id, current_user.id)
   background_tasks.add_task(run_simulation, task_id, req, current_user.id)
+
+  await ws_manager.push_to_user(current_user.id, {
+      "task_id": task_id,
+      "type": "task_created",
+      "status": "running",
+  })
 
   return {"task_id": task_id, "status": "running"}
 
@@ -346,7 +381,7 @@ async def interpolate(request: Request, req: InterpolationRequest):
 async def calc_gdd(request: Request, req: IntegrationRequest):
   gdd = await asyncio.to_thread(
       growing_degree_days,
-      req.temperatures, req.base_temp
+      req.temperatures, req.base_temp, req.max_temp
   )
   return {"growing_degree_days": round(gdd, 2)}
 
@@ -377,7 +412,8 @@ async def fetch_weather(req: WeatherFetchRequest, db: Session = Depends(get_db),
           date_to=req.date_to
       )
   except Exception as e:
-      raise HTTPException(status_code=502, detail=f"Open-Meteo API error: {str(e)}")
+      logger.error(f"Open-Meteo API error: {e}")
+      raise HTTPException(status_code=502, detail="Failed to fetch weather data from external API")
 
   records = []
   for day in weather_data:
@@ -394,13 +430,17 @@ async def fetch_weather(req: WeatherFetchRequest, db: Session = Depends(get_db),
       records.append(record)
 
   def replace_records():
-      db.query(WeatherData).filter(
-          WeatherData.region_id == req.region_id,
-          WeatherData.date >= req.date_from,
-          WeatherData.date <= req.date_to
-      ).delete()
-      db.add_all(records)
-      db.commit()
+      try:
+          db.query(WeatherData).filter(
+              WeatherData.region_id == req.region_id,
+              WeatherData.date >= req.date_from,
+              WeatherData.date <= req.date_to
+          ).delete()
+          db.add_all(records)
+          db.commit()
+      except Exception:
+          db.rollback()
+          raise
 
   await asyncio.to_thread(replace_records)
 

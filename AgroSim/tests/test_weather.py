@@ -52,7 +52,7 @@ def test_fetch_weather_api_error(client, auth_headers, test_region, mocker):
     }
     resp = client.post("/api/weather/fetch", json=payload, headers=auth_headers)
     assert resp.status_code == 502
-    assert "Open-Meteo API error" in resp.json()["detail"]
+    assert "Failed to fetch weather data" in resp.json()["detail"]
 
 
 def test_fetch_weather_invalid_range(client, auth_headers, test_region):
@@ -348,8 +348,8 @@ def test_alerts_too_many_points(client):
 
 # ── /simulate/status ──────────────────────────────────────────────────────────
 
-def test_simulation_status_not_found(client):
-    resp = client.get("/api/weather/simulate/status/99999")
+def test_simulation_status_not_found(client, auth_headers):
+    resp = client.get("/api/weather/simulate/status/99999", headers=auth_headers)
     assert resp.status_code == 404
 
 

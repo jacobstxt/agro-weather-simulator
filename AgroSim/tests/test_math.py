@@ -111,9 +111,9 @@ def test_ode_runoff_above_field_capacity():
     temp_fn  = lambda t: 15.0
     y = [300.0, 15.0]  # вище field_capacity=250
     dM, _ = soil_moisture_ode(0, y, rain_fn, et0_fn, temp_fn,
-                              field_capacity=250, wilting_point=120)
-    # runoff = (300-250)*0.5 = 25, rain=50, et=0 → dM = 25
-    assert dM == pytest.approx(25.0, abs=0.1)
+                              field_capacity=250, wilting_point=120, soil_type="loam")
+    # drainage = (300-250)*0.15 = 7.5 (loam), rain=50, et=0 → dM = 42.5
+    assert dM == pytest.approx(42.5, abs=0.1)
 
 
 def test_ode_temperature_follows_air():
